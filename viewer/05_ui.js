@@ -29,7 +29,9 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
-$("optStress").addEventListener("change", function (e) { STRESS.on = e.target.checked; stressApply(); });
+$("optStress").addEventListener("change", function (e) {
+  STRESS.on = e.target.checked; $("legend").classList.toggle("on", STRESS.on); stressApply();
+});
 ["optJoints", "optLabels", "optProps"].forEach(function (id) { $(id).addEventListener("change", applyFilters); });
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function (b) { b.addEventListener("click", function () {
   document.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
@@ -38,7 +40,18 @@ $("apply").addEventListener("click", function () { render($("knx").value, "edito
 $("knx").addEventListener("keydown", function (e) { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") $("apply").click(); });
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-applyTheme(); render(EMBEDDED_KNX, "embedded"); animate();
+applyTheme();
+try { render(EMBEDDED_KNX, "embedded"); }
+catch (err) {                                        // never let a model problem freeze the bench
+  console.error(err);
+  var b = document.createElement("div");
+  b.style.cssText = "position:absolute;left:12px;top:12px;z-index:9;background:var(--err);color:#fff;padding:10px 14px;border-radius:8px;font:13px var(--mono);max-width:70%";
+  b.textContent = "The build failed to load: " + err.message + " — the camera still works; check the console.";
+  document.getElementById("stage").appendChild(b);
+}
+animate();                                           // always: the camera must keep working
+setTimeout(function () { if (window.toast) toast("drag any part to push it \u00b7 drag the background to orbit \u00b7 shift-drag to pan"); }, 700);
+setTimeout(function () { if (window.toast) toast("drag any part to push it · drag the background to orbit · shift-drag to pan"); }, 700);
 // ---- live shared document (written from Claude Code with write_db, or saved from this page)
 (function live() {
   if (!window.claude || !window.claude.use) return;

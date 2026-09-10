@@ -202,6 +202,34 @@ the browser run the same source.
 node cli.js sim builds/demo_mech.knx    # motor, gears, string, band and ball in one rig
 ```
 
+### The bench
+
+`node cli.js view` builds a single self-contained HTML file and opens it. It runs the same engine live:
+
+- **Drag any part with the cursor** and a force is applied there, while it runs. Drag the background to
+  orbit, shift-drag to pan.
+- A **step slider** that builds the model up, with the parts for that step and a camera that walks around.
+- A **stress view** that colours bending rods and bearings by how close they are to letting go.
+- Joint loads, rod forces, and what broke, updating as it runs.
+- The table is there, with the friction you picked.
+
+The build fails if the viewer does not run: `scripts/smoke.js` executes the page's own code in Node
+against a stubbed browser, so a throw that would freeze the page is caught before it ships.
+
+### The bench
+
+`node cli.js view` builds a single self-contained HTML file and opens it. It runs the same engine live:
+
+- **Drag any part with the cursor** and a force is applied there, while it runs. Drag the background to
+  orbit, shift-drag to pan.
+- A **step slider** that builds the model up, with the parts for that step and a camera that walks around.
+- A **stress view** that colours bending rods and bearings by how close they are to letting go.
+- Joint loads, rod forces, and what broke, updating as it runs.
+- The table is there, with the friction you picked.
+
+The build fails if the viewer does not run: `scripts/smoke.js` executes the page's own code in Node
+against a stubbed browser, so a throw that would freeze the page is caught before it ships.
+
 ---
 
 ## Pattern library

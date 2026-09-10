@@ -8,8 +8,9 @@ KNEX.phys.collide = function (W) {
     var nearDesk = moving && B.x[2] - B.rBound <= W.ground + 0.001;
     var nearProps = props.filter(function (Q) { return Q !== B && (moving || !Q.fixed) && V.dist(B.x, Q.x) < B.rBound + Q.rBound; });
     if (!nearDesk && !nearProps.length) return;
-    B.feat.forEach(function (f) {
-      var p = B.toWorld(f.p);
+    if (B.fixed && !B._fw) B._fw = B.feat.map(function (f) { return B.toWorld(f.p); });   // a fixed body never moves
+    B.feat.forEach(function (f, fi) {
+      var p = B.fixed ? B._fw[fi] : B.toWorld(f.p);
       if (nearDesk) {
         var pen = W.ground + f.r - p[2];                         // desk
         if (pen > -0.003) C.push({ A: B, B: null, p: p, r: V.sub(p, B.x), n: [0, 0, 1], pen: pen, mu: B.mu, lam: 0, lt: [0, 0] });

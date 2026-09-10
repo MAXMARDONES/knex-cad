@@ -77,7 +77,7 @@ function rebuild(solved, refit) {
     m.position.copy(toThree(K.pos)).add(new THREE.Vector3(0, 16, 0));
     m.userData = { type: "load", label: L.name, step: K.step, body: K.body }; place(m, K.body); PARTS.push(m);
   });
-  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = box.min.y - 2; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
+  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = 0.2; desk.position.y = -0.4; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
   applyFilters();
 }
 function applyFilters() {

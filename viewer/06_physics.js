@@ -1,9 +1,9 @@
 <script>
 /* Live physics in the page: build a world from the current model, step it, move the body groups. */
-var PHYS = { W: null, running: false, dt: 1 / 1000, speed: 1, solved: null, acc: 0, press: {}, surface: "mousepad-cloth" };
+var PHYS = { W: null, running: false, dt: 1 / 600, speed: 1, solved: null, acc: 0, press: {}, surface: "mousepad-cloth" };
 function physBuild() {
   if (!PHYS.solved) return;
-  PHYS.W = KNEX.phys.world(PHYS.solved, { surface: PHYS.surface, iters: 10 });
+  PHYS.W = KNEX.phys.world(PHYS.solved, { surface: PHYS.surface, iters: 8 });
   PHYS.W.loads.forEach(function (L) { L.gain = PHYS.press[L.name] || 0; });
   PHYS.rest = PHYS.W.bodies.map(function (b) { return b.x.slice(); });
   PHYS.peak = {};
@@ -12,6 +12,7 @@ function physBuild() {
 function physReset() { PHYS.running = false; physBuild(); document.getElementById("physRun").textContent = "Run"; physApply(); physReadout(); }
 function physApply() {                                   // body transforms -> three groups
   if (!PHYS.W) return;
+  try {
   PHYS.W.bodies.forEach(function (b) {
     var g = BODYG[b.id]; if (!g) return;
     g.position.set(b.x[0] * 1000, b.x[2] * 1000, -b.x[1] * 1000);
@@ -19,12 +20,17 @@ function physApply() {                                   // body transforms -> t
   });
   if (window.beamsApply) beamsApply();
   if (window.stressApply && STRESS.on) stressApply();
+  } catch (e) { console.warn("physApply skipped:", e.message); }
 }
 function physStep(ms) {
   if (!PHYS.W || !PHYS.running) return;
   PHYS.acc = Math.min(PHYS.acc + ms / 1000 * PHYS.speed, 0.05);
-  var n = 0;
-  while (PHYS.acc >= PHYS.dt && n < 60) { KNEX.phys.step(PHYS.W, PHYS.dt, {}); PHYS.acc -= PHYS.dt; n++; }
+  var n = 0, t0 = performance.now();
+  try {
+    while (PHYS.acc >= PHYS.dt && n < 80) { KNEX.phys.step(PHYS.W, PHYS.dt, dragInput()); PHYS.acc -= PHYS.dt; n++; }
+  } catch (e) { console.warn("physics step failed:", e.message); PHYS.running = false; var b = document.getElementById("physRun"); if (b) b.textContent = "Run"; }
+  PHYS.steps = n; PHYS.msPerFrame = performance.now() - t0;
+  PHYS.rate = n * PHYS.dt / Math.max(1e-6, (performance.now() - t0) / 1000);
   PHYS.W.joints.forEach(function (j) { PHYS.peak[j.name] = Math.max(PHYS.peak[j.name] || 0, j.load); });
   physApply();
 }
@@ -41,7 +47,9 @@ function physReadout() {
   var b = [];
   W.beams.forEach(function (x) { b.push("<tr><td>" + x.name + "</td><td class=n>" + x.F.toFixed(1) + "</td><td class=n>" + x.Flat.toFixed(2) + "</td></tr>"); });
   document.getElementById("physBeams").innerHTML = b.length ? "<tr><th>compliant rod</th><th class=n>along N</th><th class=n>bending N</th></tr>" + b.join("") : "";
-  var out = ["t " + W.t.toFixed(2) + " s"];
+  var out = ["t " + W.t.toFixed(2) + " s" + (PHYS.running ? "  ·  " + (PHYS.rate || 0).toFixed(1) + "x real time" : "  ·  paused") +
+             (DRAG.on ? "  ·  pushing " + DRAG.N.toFixed(1) + " N" : "")];
+  if (W.events && W.events.length) out.push("BROKE: " + W.events.slice(-3).map(function (e) { return e.what + " — " + e.why; }).join(" | "));
   W.bodies.forEach(function (x, i) {
     if (x.fixed) return;
     var d = [(x.x[0] - PHYS.rest[i][0]) * 1000, (x.x[1] - PHYS.rest[i][1]) * 1000, (x.x[2] - PHYS.rest[i][2]) * 1000];
@@ -55,6 +63,7 @@ setInterval(physReadout, 200);
 <script>
 /* Reshape every compliant rod each frame so it visibly bends through the connector holding it. */
 function beamShape(bm) {
+  if (!bm.qa || !bm.u || !bm.err) return null;         // nothing solved yet: leave the rod as built
   var V = KNEX.V, D = KNEX.DIMS, rod = null;
   for (var k in BEAMMESH) if (BEAMMESH[k].rod.id === bm.rod) rod = BEAMMESH[k];
   if (!rod) return null;
@@ -74,6 +83,7 @@ function beamShape(bm) {
 }
 function beamsApply() {
   if (!PHYS.W) return;
+  try {
   PHYS.W.beams.forEach(function (bm) {
     var sh = beamShape(bm); if (!sh) return;
     if (sh.rod.lastBend != null && Math.abs(sh.rod.lastBend - sh.bend) < 2e-5 && sh.rod.lastT === PHYS.W.t) return;
@@ -81,5 +91,6 @@ function beamsApply() {
     var g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sh.pts), 14, KNEX.DIMS.rodD / 2, 7, false);
     sh.rod.mesh.geometry.dispose(); sh.rod.mesh.geometry = g;
   });
+  } catch (e) { console.warn("beam reshape skipped:", e.message); }
 }
 </script>

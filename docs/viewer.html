@@ -4,9 +4,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root { --ground:#EEF0EC; --surface:#FFFFFF; --surface-2:#E3E6DF; --ink:#151915; --muted:#5C665C; --line:#CBD0C6; --accent:#E8531A; --ok:#1F8F52; --warn:#C7860E; --err:#C8302B;
-    --scene:#DCE0D6; --grid:#B9BFB2; --display:"Archivo","Helvetica Neue",Arial,sans-serif; --mono:"IBM Plex Mono","SFMono-Regular",Menlo,monospace; color-scheme:light; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ground:#0F120F; --surface:#181C18; --surface-2:#222722; --ink:#E9ECE6; --muted:#98A296; --line:#2E352E; --accent:#FF6E38; --ok:#3EC27A; --warn:#E8A93A; --err:#F05A52; --scene:#1A1F1A; --grid:#33392F; color-scheme:dark; } }
-  :root[data-theme="dark"] { --ground:#0F120F; --surface:#181C18; --surface-2:#222722; --ink:#E9ECE6; --muted:#98A296; --line:#2E352E; --accent:#FF6E38; --ok:#3EC27A; --warn:#E8A93A; --err:#F05A52; --scene:#1A1F1A; --grid:#33392F; color-scheme:dark; }
+    --scene:#DCE0D6; --grid:#B9BFB2; --desk:#C2C7B6; --display:"Archivo","Helvetica Neue",Arial,sans-serif; --mono:"IBM Plex Mono","SFMono-Regular",Menlo,monospace; color-scheme:light; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ground:#0F120F; --surface:#181C18; --surface-2:#222722; --ink:#E9ECE6; --muted:#98A296; --line:#2E352E; --accent:#FF6E38; --ok:#3EC27A; --warn:#E8A93A; --err:#F05A52; --scene:#1A1F1A; --grid:#3E463A; --desk:#2C3329; color-scheme:dark; } }
+  :root[data-theme="dark"] { --ground:#0F120F; --surface:#181C18; --surface-2:#222722; --ink:#E9ECE6; --muted:#98A296; --line:#2E352E; --accent:#FF6E38; --ok:#3EC27A; --warn:#E8A93A; --err:#F05A52; --scene:#1A1F1A; --grid:#3E463A; --desk:#2C3329; color-scheme:dark; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--ground); color:var(--ink); font-family:var(--display); font-size:14px; line-height:1.4; height:100vh; display:grid; grid-template-rows:auto 1fr; overflow:hidden; }
   header { display:flex; align-items:center; gap:14px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--surface); }
@@ -28,6 +28,14 @@
   #stepInfo { position:absolute; left:12px; top:12px; max-width:min(560px,60%); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; line-height:1.5; }
   #stepInfo:empty { display:none; }
   #stepInfo b { font-weight:700; }
+  #toast { position:absolute; left:50%; transform:translateX(-50%); bottom:74px; background:var(--ink); color:var(--ground);
+           padding:7px 14px; border-radius:6px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  #legend { position:absolute; right:12px; bottom:74px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
+            padding:8px 10px; font-family:var(--mono); font-size:11px; display:none; }
+  #legend.on { display:block; }
+  #legend .bar { height:9px; width:150px; border-radius:2px; margin:5px 0 3px;
+                 background:linear-gradient(90deg,#2A6CB6,#2E9E4F,#F2C51D,#D9302C,#781414); }
+  #legend .ends { display:flex; justify-content:space-between; color:var(--muted); }
   aside { border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; min-height:0; }
   .tabs { display:flex; border-bottom:1px solid var(--line); }
   .tabs button { flex:1; background:none; border:0; border-bottom:2px solid transparent; padding:8px 4px; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }
@@ -63,6 +71,12 @@
   <div id="stage">
     <canvas id="c"></canvas>
     <div id="hud"><div class="tip" id="tip"></div></div>
+    <div id="toast"></div>
+    <div id="legend">
+      <div>joint load / rod stress</div>
+      <div class="bar"></div>
+      <div class="ends"><span>slack</span><span>at the limit</span></div>
+    </div>
     <div id="stepInfo"></div>
     <div id="bar">
       <label>step</label>
@@ -75,6 +89,7 @@
         <label><input type="checkbox" id="optSpin"> spin</label>
         <label><input type="checkbox" id="optFollow" checked> follow steps</label>
         <label><input type="checkbox" id="optStress"> stress</label>
+        <label><input type="checkbox" id="optDrag" checked> drag to push</label>
       </div>
     </div>
   </div>
@@ -107,7 +122,7 @@
       <div class="row"><label style="font-family:var(--mono);font-size:12px;color:var(--muted)">speed</label>
         <input type="range" id="physSpeed" min="0.05" max="1" step="0.05" value="1" style="flex:1;accent-color:var(--accent)">
         <span id="physSpeedVal" style="font-family:var(--mono);font-size:12px">1.00x</span></div>
-      <div class="note">Hold a button to press that point. Gravity, bearing friction, rod bending and desk friction are all live.</div>
+      <div class="note"><b>Drag any part in the 3D view to push it</b>, anywhere, while it runs. Hold a button below to press a declared point instead. Gravity, bearing friction, rod bending, desk contact and breakage are all live.</div>
       <div class="row" id="physLoads"></div>
       <table id="physJoints"></table>
       <table id="physBeams" style="margin-top:10px"></table>
@@ -1195,8 +1210,9 @@ KNEX.phys.collide = function (W) {
     var nearDesk = moving && B.x[2] - B.rBound <= W.ground + 0.001;
     var nearProps = props.filter(function (Q) { return Q !== B && (moving || !Q.fixed) && V.dist(B.x, Q.x) < B.rBound + Q.rBound; });
     if (!nearDesk && !nearProps.length) return;
-    B.feat.forEach(function (f) {
-      var p = B.toWorld(f.p);
+    if (B.fixed && !B._fw) B._fw = B.feat.map(function (f) { return B.toWorld(f.p); });   // a fixed body never moves
+    B.feat.forEach(function (f, fi) {
+      var p = B.fixed ? B._fw[fi] : B.toWorld(f.p);
       if (nearDesk) {
         var pen = W.ground + f.r - p[2];                         // desk
         if (pen > -0.003) C.push({ A: B, B: null, p: p, r: V.sub(p, B.x), n: [0, 0, 1], pen: pen, mu: B.mu, lam: 0, lt: [0, 0] });
@@ -1287,20 +1303,38 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 var camera = new THREE.PerspectiveCamera(38, 1, 5, 6000);
 var CAM = { target: new THREE.Vector3(0, 40, 0), theta: 0.75, phi: 1.05, r: 620 };
 function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-function applyTheme() { scene.background = new THREE.Color(cssVar("--scene")); if (grid) { grid.material.color = new THREE.Color(cssVar("--grid")); grid.material.opacity = 0.55; } }
+function applyTheme() {
+  scene.background = new THREE.Color(cssVar("--scene"));
+  if (grid) { grid.material.color = new THREE.Color(cssVar("--grid")); grid.material.opacity = 0.35; }
+  if (typeof deskMat !== "undefined") deskMat.color = new THREE.Color(cssVar("--desk"));
+}
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f86, 0.85));
 var sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(300, 500, 200); scene.add(sun);
 var fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(-300, 200, -300); scene.add(fill);
-var grid = new THREE.GridHelper(1200, 32, 0x888888, 0x888888); grid.material.transparent = true; scene.add(grid);
+// the table: a real surface the model stands on, with a grid over it
+var deskMat = new THREE.MeshStandardMaterial({ color: 0x6E7466, roughness: 0.95, metalness: 0 });
+var desk = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), deskMat);
+desk.rotation.x = -Math.PI / 2; desk.position.y = -0.4; scene.add(desk);
+var grid = new THREE.GridHelper(2400, 64, 0x9aa08f, 0x9aa08f); grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
 var world = new THREE.Group(); scene.add(world);
 function toThree(p) { return new THREE.Vector3(p[0], p[2], -p[1]); }
 function dirThree(v) { return new THREE.Vector3(v[0], v[2], -v[1]); }
 // --- orbit: drag rotates, wheel zooms, right/shift drag pans
 (function orbit() {
   var down = null, spinning = false;
-  canvas.addEventListener("pointerdown", function (e) { down = { x: e.clientX, y: e.clientY, b: e.button, sh: e.shiftKey }; canvas.setPointerCapture(e.pointerId); });
-  canvas.addEventListener("pointerup", function (e) { if (down && Math.abs(e.clientX - down.x) < 3 && Math.abs(e.clientY - down.y) < 3) pick(e, true); down = null; });
+  canvas.addEventListener("pointerdown", function (e) {
+    canvas.setPointerCapture(e.pointerId);
+    if (e.button === 0 && !e.shiftKey && window.dragStart && dragStart(e)) { down = null; return; }   // grabbed a part
+    down = { x: e.clientX, y: e.clientY, b: e.button, sh: e.shiftKey };
+  });
+  canvas.addEventListener("pointerup", function (e) {
+    if (window.DRAG && DRAG.on) { dragEnd(); return; }
+    if (down && Math.abs(e.clientX - down.x) < 3 && Math.abs(e.clientY - down.y) < 3) pick(e, true);
+    down = null;
+  });
+  canvas.addEventListener("pointercancel", function () { if (window.DRAG && DRAG.on) dragEnd(); down = null; });
   canvas.addEventListener("pointermove", function (e) {
+    if (window.DRAG && DRAG.on) { dragMove(e); return; }
     if (!down) { pick(e, false); return; }
     var dx = e.clientX - down.x, dy = e.clientY - down.y; down.x = e.clientX; down.y = e.clientY;
     if (down.b === 2 || down.sh) {
@@ -1320,9 +1354,13 @@ var flyTo = null;
 function animate() {
   requestAnimationFrame(animate); resize();
   if (document.getElementById("optSpin").checked) CAM.theta += 0.004;
-  var now = performance.now(); if (window.physStep) physStep(now - (animate.last || now)); animate.last = now;
+  var now = performance.now();
+  try { if (window.physStep) physStep(now - (animate.last || now)); } catch (e) { if (!animate.warned) { animate.warned = 1; console.error("physics loop stopped:", e); } }
+  animate.last = now;
   if (flyTo) { CAM.target.lerp(flyTo, 0.12); if (CAM.target.distanceTo(flyTo) < 0.5) flyTo = null; }
-  updateCamera(); renderer.render(scene, camera);
+  if (window.dragArrow) dragArrow();
+  updateCamera();
+  try { renderer.render(scene, camera); } catch (e) { if (!animate.rwarn) { animate.rwarn = 1; console.error("render:", e); } }
 }
 // --- materials (geometry lives in 03b_parts.js)
 var MAT = {};
@@ -1478,7 +1516,7 @@ function rebuild(solved, refit) {
     m.position.copy(toThree(K.pos)).add(new THREE.Vector3(0, 16, 0));
     m.userData = { type: "load", label: L.name, step: K.step, body: K.body }; place(m, K.body); PARTS.push(m);
   });
-  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = box.min.y - 2; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
+  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = 0.2; desk.position.y = -0.4; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
   applyFilters();
 }
 function applyFilters() {
@@ -1596,10 +1634,10 @@ function showStep(v) {
 </script>
 <script>
 /* Live physics in the page: build a world from the current model, step it, move the body groups. */
-var PHYS = { W: null, running: false, dt: 1 / 1000, speed: 1, solved: null, acc: 0, press: {}, surface: "mousepad-cloth" };
+var PHYS = { W: null, running: false, dt: 1 / 600, speed: 1, solved: null, acc: 0, press: {}, surface: "mousepad-cloth" };
 function physBuild() {
   if (!PHYS.solved) return;
-  PHYS.W = KNEX.phys.world(PHYS.solved, { surface: PHYS.surface, iters: 10 });
+  PHYS.W = KNEX.phys.world(PHYS.solved, { surface: PHYS.surface, iters: 8 });
   PHYS.W.loads.forEach(function (L) { L.gain = PHYS.press[L.name] || 0; });
   PHYS.rest = PHYS.W.bodies.map(function (b) { return b.x.slice(); });
   PHYS.peak = {};
@@ -1608,6 +1646,7 @@ function physBuild() {
 function physReset() { PHYS.running = false; physBuild(); document.getElementById("physRun").textContent = "Run"; physApply(); physReadout(); }
 function physApply() {                                   // body transforms -> three groups
   if (!PHYS.W) return;
+  try {
   PHYS.W.bodies.forEach(function (b) {
     var g = BODYG[b.id]; if (!g) return;
     g.position.set(b.x[0] * 1000, b.x[2] * 1000, -b.x[1] * 1000);
@@ -1615,12 +1654,17 @@ function physApply() {                                   // body transforms -> t
   });
   if (window.beamsApply) beamsApply();
   if (window.stressApply && STRESS.on) stressApply();
+  } catch (e) { console.warn("physApply skipped:", e.message); }
 }
 function physStep(ms) {
   if (!PHYS.W || !PHYS.running) return;
   PHYS.acc = Math.min(PHYS.acc + ms / 1000 * PHYS.speed, 0.05);
-  var n = 0;
-  while (PHYS.acc >= PHYS.dt && n < 60) { KNEX.phys.step(PHYS.W, PHYS.dt, {}); PHYS.acc -= PHYS.dt; n++; }
+  var n = 0, t0 = performance.now();
+  try {
+    while (PHYS.acc >= PHYS.dt && n < 80) { KNEX.phys.step(PHYS.W, PHYS.dt, dragInput()); PHYS.acc -= PHYS.dt; n++; }
+  } catch (e) { console.warn("physics step failed:", e.message); PHYS.running = false; var b = document.getElementById("physRun"); if (b) b.textContent = "Run"; }
+  PHYS.steps = n; PHYS.msPerFrame = performance.now() - t0;
+  PHYS.rate = n * PHYS.dt / Math.max(1e-6, (performance.now() - t0) / 1000);
   PHYS.W.joints.forEach(function (j) { PHYS.peak[j.name] = Math.max(PHYS.peak[j.name] || 0, j.load); });
   physApply();
 }
@@ -1637,7 +1681,9 @@ function physReadout() {
   var b = [];
   W.beams.forEach(function (x) { b.push("<tr><td>" + x.name + "</td><td class=n>" + x.F.toFixed(1) + "</td><td class=n>" + x.Flat.toFixed(2) + "</td></tr>"); });
   document.getElementById("physBeams").innerHTML = b.length ? "<tr><th>compliant rod</th><th class=n>along N</th><th class=n>bending N</th></tr>" + b.join("") : "";
-  var out = ["t " + W.t.toFixed(2) + " s"];
+  var out = ["t " + W.t.toFixed(2) + " s" + (PHYS.running ? "  ·  " + (PHYS.rate || 0).toFixed(1) + "x real time" : "  ·  paused") +
+             (DRAG.on ? "  ·  pushing " + DRAG.N.toFixed(1) + " N" : "")];
+  if (W.events && W.events.length) out.push("BROKE: " + W.events.slice(-3).map(function (e) { return e.what + " — " + e.why; }).join(" | "));
   W.bodies.forEach(function (x, i) {
     if (x.fixed) return;
     var d = [(x.x[0] - PHYS.rest[i][0]) * 1000, (x.x[1] - PHYS.rest[i][1]) * 1000, (x.x[2] - PHYS.rest[i][2]) * 1000];
@@ -1651,6 +1697,7 @@ setInterval(physReadout, 200);
 <script>
 /* Reshape every compliant rod each frame so it visibly bends through the connector holding it. */
 function beamShape(bm) {
+  if (!bm.qa || !bm.u || !bm.err) return null;         // nothing solved yet: leave the rod as built
   var V = KNEX.V, D = KNEX.DIMS, rod = null;
   for (var k in BEAMMESH) if (BEAMMESH[k].rod.id === bm.rod) rod = BEAMMESH[k];
   if (!rod) return null;
@@ -1670,6 +1717,7 @@ function beamShape(bm) {
 }
 function beamsApply() {
   if (!PHYS.W) return;
+  try {
   PHYS.W.beams.forEach(function (bm) {
     var sh = beamShape(bm); if (!sh) return;
     if (sh.rod.lastBend != null && Math.abs(sh.rod.lastBend - sh.bend) < 2e-5 && sh.rod.lastT === PHYS.W.t) return;
@@ -1677,6 +1725,7 @@ function beamsApply() {
     var g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sh.pts), 14, KNEX.DIMS.rodD / 2, 7, false);
     sh.rod.mesh.geometry.dispose(); sh.rod.mesh.geometry = g;
   });
+  } catch (e) { console.warn("beam reshape skipped:", e.message); }
 }
 </script>
 <script>
@@ -1710,7 +1759,9 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
-$("optStress").addEventListener("change", function (e) { STRESS.on = e.target.checked; stressApply(); });
+$("optStress").addEventListener("change", function (e) {
+  STRESS.on = e.target.checked; $("legend").classList.toggle("on", STRESS.on); stressApply();
+});
 ["optJoints", "optLabels", "optProps"].forEach(function (id) { $(id).addEventListener("change", applyFilters); });
 Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function (b) { b.addEventListener("click", function () {
   document.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
@@ -1719,7 +1770,18 @@ $("apply").addEventListener("click", function () { render($("knx").value, "edito
 $("knx").addEventListener("keydown", function (e) { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") $("apply").click(); });
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-applyTheme(); render(EMBEDDED_KNX, "embedded"); animate();
+applyTheme();
+try { render(EMBEDDED_KNX, "embedded"); }
+catch (err) {                                        // never let a model problem freeze the bench
+  console.error(err);
+  var b = document.createElement("div");
+  b.style.cssText = "position:absolute;left:12px;top:12px;z-index:9;background:var(--err);color:#fff;padding:10px 14px;border-radius:8px;font:13px var(--mono);max-width:70%";
+  b.textContent = "The build failed to load: " + err.message + " — the camera still works; check the console.";
+  document.getElementById("stage").appendChild(b);
+}
+animate();                                           // always: the camera must keep working
+setTimeout(function () { if (window.toast) toast("drag any part to push it \u00b7 drag the background to orbit \u00b7 shift-drag to pan"); }, 700);
+setTimeout(function () { if (window.toast) toast("drag any part to push it · drag the background to orbit · shift-drag to pan"); }, 700);
 // ---- live shared document (written from Claude Code with write_db, or saved from this page)
 (function live() {
   if (!window.claude || !window.claude.use) return;
@@ -1737,6 +1799,69 @@ applyTheme(); render(EMBEDDED_KNX, "embedded"); animate();
     }, function (e) { $("livetxt").textContent = "live feed stopped (" + e.code + ")"; $("live").className = "live"; });
   });
 })();
+</script>
+<script>
+/* Push the model with the cursor: drag any part and a force is applied there, live.
+   The grab point is tracked in the body's own frame, so it stays on the part as it moves. */
+var DRAG = { on: false, body: null, local: null, target: null, force: [0, 0, 0], arrow: null, N: 0 };
+var DRAG_K = 90;                                        // N per metre of pull; the cap keeps it sane
+var DRAG_MAX = 25;
+function dragInput() {
+  if (!DRAG.on || !DRAG.body || DRAG.body.fixed) return {};
+  var V = KNEX.V, P = KNEX.phys;
+  var grab = V.add(DRAG.body.x, P.qrot(DRAG.body.q, DRAG.local));
+  var pull = V.sub(DRAG.target, grab), d = V.norm(pull);
+  var F = d > 1e-6 ? V.mul(pull, Math.min(DRAG_MAX, DRAG_K * d) / d) : [0, 0, 0];
+  DRAG.force = F; DRAG.N = V.norm(F); DRAG.grab = grab;
+  return { loads: [{ body: DRAG.body, at: grab, F: F, world: true, gain: 1 }] };
+}
+function dragArrow() {
+  if (!DRAG.arrow) {
+    DRAG.arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xE8531A, 14, 8);
+    DRAG.arrow.visible = false; scene.add(DRAG.arrow);
+  }
+  if (!DRAG.on || !DRAG.grab) { DRAG.arrow.visible = false; return; }
+  var a = new THREE.Vector3(DRAG.grab[0] * 1000, DRAG.grab[2] * 1000, -DRAG.grab[1] * 1000);
+  var b = new THREE.Vector3(DRAG.target[0] * 1000, DRAG.target[2] * 1000, -DRAG.target[1] * 1000);
+  var d = b.clone().sub(a), L = Math.max(1, d.length());
+  DRAG.arrow.position.copy(a); DRAG.arrow.setDirection(d.normalize()); DRAG.arrow.setLength(L, Math.min(20, L * 0.3), Math.min(10, L * 0.15));
+  DRAG.arrow.visible = true;
+}
+function screenToWorldPlane(e, throughMm) {              // point under the cursor on a plane facing the camera
+  var r = canvas.getBoundingClientRect();
+  var v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(v, camera);
+  var n = camera.getWorldDirection(new THREE.Vector3());
+  var plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, throughMm);
+  var hit = new THREE.Vector3();
+  return ray.ray.intersectPlane(plane, hit) ? hit : throughMm.clone();
+}
+function dragStart(e) {
+  if (!PHYS.W || !document.getElementById("optDrag").checked) return false;
+  var r = canvas.getBoundingClientRect();
+  var v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(v, camera);
+  var hits = ray.intersectObjects(PARTS.filter(function (p) { return p.visible; }), true);
+  if (!hits.length) return false;
+  var obj = hits[0].object; while (obj && obj.userData.body == null) obj = obj.parent;
+  if (!obj) return false;
+  var body = PHYS.W.bodies[obj.userData.body];
+  if (!body || body.fixed) { toast("that part is bolted to the table"); return false; }
+  var hm = hits[0].point, world = [hm.x / 1000, -hm.z / 1000, hm.y / 1000];
+  var q = body.q, inv = [-q[0], -q[1], -q[2], q[3]];
+  DRAG.body = body; DRAG.local = KNEX.phys.qrot(inv, KNEX.V.sub(world, body.x));
+  DRAG.target = world; DRAG.on = true; DRAG.hitMm = hm.clone();
+  if (!PHYS.running) { PHYS.running = true; document.getElementById("physRun").textContent = "Pause"; }
+  canvas.style.cursor = "grabbing";
+  return true;
+}
+function dragMove(e) { if (!DRAG.on) return; var p = screenToWorldPlane(e, DRAG.hitMm); DRAG.target = [p.x / 1000, -p.z / 1000, p.y / 1000]; }
+function dragEnd() { DRAG.on = false; DRAG.body = null; DRAG.N = 0; canvas.style.cursor = ""; if (DRAG.arrow) DRAG.arrow.visible = false; }
+function toast(msg) {
+  var el = document.getElementById("toast"); if (!el) return;
+  el.textContent = msg; el.style.opacity = 1;
+  clearTimeout(toast.t); toast.t = setTimeout(function () { el.style.opacity = 0; }, 2200);
+}
 </script>
 <script>
 /* URL parameters, so a screenshot can be asked for in one line:
@@ -1791,7 +1916,7 @@ applyTheme(); render(EMBEDDED_KNX, "embedded"); animate();
     if (!PHYS.W) physBuild();
     PHYS.running = !PHYS.running; run.textContent = PHYS.running ? "Pause" : "Run";
   });
-  document.getElementById("physReset").addEventListener("click", physReset);
+  document.getElementById("physReset").addEventListener("click", function () { if (window.dragEnd) dragEnd(); physReset(); });
   document.getElementById("physSurface").addEventListener("change", function (e) { PHYS.surface = e.target.value; physReset(); });
   document.getElementById("physSpeed").addEventListener("input", function (e) { PHYS.speed = Number(e.target.value); document.getElementById("physSpeedVal").textContent = PHYS.speed.toFixed(2) + "x"; });
   window.physLoadButtons = function (loads) {

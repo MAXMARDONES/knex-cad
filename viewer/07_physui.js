@@ -6,7 +6,7 @@
     if (!PHYS.W) physBuild();
     PHYS.running = !PHYS.running; run.textContent = PHYS.running ? "Pause" : "Run";
   });
-  document.getElementById("physReset").addEventListener("click", physReset);
+  document.getElementById("physReset").addEventListener("click", function () { if (window.dragEnd) dragEnd(); physReset(); });
   document.getElementById("physSurface").addEventListener("change", function (e) { PHYS.surface = e.target.value; physReset(); });
   document.getElementById("physSpeed").addEventListener("input", function (e) { PHYS.speed = Number(e.target.value); document.getElementById("physSpeedVal").textContent = PHYS.speed.toFixed(2) + "x"; });
   window.physLoadButtons = function (loads) {

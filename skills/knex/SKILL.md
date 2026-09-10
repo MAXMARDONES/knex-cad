@@ -77,11 +77,13 @@ node cli.js builds/rig.knx                                    # every problem, b
 node cli.js sim builds/rig.knx --surface desk-wood --press "finger left"=1 --seconds 1.5
 node cli.js render builds/rig.knx out.svg --view iso --labels --hide props
 node cli.js instructions builds/rig.knx docs/instructions     # a sheet per step, new parts highlighted
-./build_viewer.sh builds/rig.knx                              # self-contained docs/viewer.html
+knex-cad view                                                 # build the 3D bench and open it
 ```
 
 Views for `render`: `iso iso2 front back left right top low`. Masking: `--hide props,joints,rods,conns,spacers,loads`.
-The renderer needs no browser, so it is the fastest way to look at something.
+The renderer needs no browser, so it is the fastest way to look at something. The bench (`view`) is for
+when you want to push the thing: drag any part with the cursor and a force is applied there, live. The bench (`view`) is for
+when you want to push the thing: drag any part with the cursor and a force is applied there, live.
 
 **Always simulate before you call a design done.** The physics here has caught a fork passing through the
 payload, springs preloading bearings eight times past capacity, and a rig with nothing holding it level.

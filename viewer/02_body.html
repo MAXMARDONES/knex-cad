@@ -10,6 +10,12 @@
   <div id="stage">
     <canvas id="c"></canvas>
     <div id="hud"><div class="tip" id="tip"></div></div>
+    <div id="toast"></div>
+    <div id="legend">
+      <div>joint load / rod stress</div>
+      <div class="bar"></div>
+      <div class="ends"><span>slack</span><span>at the limit</span></div>
+    </div>
     <div id="stepInfo"></div>
     <div id="bar">
       <label>step</label>
@@ -22,6 +28,7 @@
         <label><input type="checkbox" id="optSpin"> spin</label>
         <label><input type="checkbox" id="optFollow" checked> follow steps</label>
         <label><input type="checkbox" id="optStress"> stress</label>
+        <label><input type="checkbox" id="optDrag" checked> drag to push</label>
       </div>
     </div>
   </div>
@@ -54,7 +61,7 @@
       <div class="row"><label style="font-family:var(--mono);font-size:12px;color:var(--muted)">speed</label>
         <input type="range" id="physSpeed" min="0.05" max="1" step="0.05" value="1" style="flex:1;accent-color:var(--accent)">
         <span id="physSpeedVal" style="font-family:var(--mono);font-size:12px">1.00x</span></div>
-      <div class="note">Hold a button to press that point. Gravity, bearing friction, rod bending and desk friction are all live.</div>
+      <div class="note"><b>Drag any part in the 3D view to push it</b>, anywhere, while it runs. Hold a button below to press a declared point instead. Gravity, bearing friction, rod bending, desk contact and breakage are all live.</div>
       <div class="row" id="physLoads"></div>
       <table id="physJoints"></table>
       <table id="physBeams" style="margin-top:10px"></table>
