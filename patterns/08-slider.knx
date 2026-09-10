@@ -1,15 +1,28 @@
 T Linear slider
 # One hub on a rod is a carriage that slides AND spins. Two hubs on two parallel rods, tied
 # together, is a carriage that only slides: the second rod is what kills the rotation.
-! two parallel rails
-C R1 W8 -1,-2,0.5 x y
-C R2 W8 -1,2,0.5 x y
-C R3 W8 1,-2,0.5 x y
-C R4 W8 1,2,0.5 x y
+#
+# KEEP IT OFF THE TABLE. A connector is a 37.5 mm disc, so at z = 0.5 U its rim rests exactly on the
+# desk. This pattern used to sit there: the desk shoved the scraping carriage up, the two hubs fought
+# the contact, and they reported 145 N under nothing but gravity and tore themselves apart. At
+# z = 1.5 U each hub carries 0.05 N, which is half the carriage's own weight, as it should be.
+#
+# Anchor the rails: a frame held by nothing plus an F is a rocket. Push ACROSS the rails, not along
+# them; a frictionless slide under a constant force never stops accelerating, so pressing along the
+# travel measures nothing, while pressing across shows what the second rail is for.
+! two parallel rails, clamped to the table and clear of it
+C R1 W8 -1,-2,1.5 x y
+C R2 W8 -1,2,1.5 x y
+C R3 W8 1,-2,1.5 x y
+C R4 W8 1,2,1.5 x y
 R R1 R2
 R R3 R4
+A R1
+A R2
+A R3
+A R4
 ! the carriage: a hub on each rail, tied across
-H C1 W8 -1,0,0.5 z
-H C2 W8 1,0,0.5 z
+H C1 W8 -1,0,1.5 z
+H C2 W8 1,0,1.5 z
 R C1 C2
-F C1 0,2,0 push
+F C1 2,0,0 push

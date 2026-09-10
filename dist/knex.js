@@ -500,8 +500,14 @@ KNEX.solve = function (m) {
         if (rod.beam) {                      // a bending rod leaves its socket straight and curves after: allow the angle
           var lim = rod.flexi ? 60 : 25;      // a stiff rod can only be persuaded so far before the socket lets go
           for (var kf = 0; kf < 8; kf++) { var af = V.angleDeg(K.slotDir(kf), away); if (af < bestA && af < lim && slots.indexOf(kf) >= 0 && !K.used["s" + kf]) { bestA = af; bestK = kf; } }
-          if (bestK < 0) issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + ")");
-          else { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          /* No socket does not mean no joint. A rod ending at a connector's centre and lying along its
+             normal goes THROUGH the hub, and the other half of a 3D pair can hold one too. The rigid
+             path has always allowed both; the bending path used to demand a socket and called every
+             axle in the model an error, which is what made FLEX unusable on anything with a bearing. */
+          if (bestK >= 0) { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          else if (along) { j = { type: "hole", t: atEnd }; }
+          else if (K.pair && Math.abs(V.dot(away, out.byName[K.pair].n)) < 0.08) { /* its 3D partner holds it */ }
+          else issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + "), and it does not run through the hub either");
         } else {
         for (var k = 0; k < 8; k++) { var a = V.angleDeg(K.slotDir(k), away); if (a < bestA) { bestA = a; bestK = k; } }
         if (bestA < D.tolAng) {
@@ -651,6 +657,18 @@ KNEX.check = function (m, s) {
   }
   // floating parts
   s.conns.forEach(function (K) { if (!K.joints.length && !K.pair) issue("warn", K.line, K.name + " (" + K.kind + ") touches nothing"); });
+  /* A bearing resting on the table. A connector is a 37.5 mm disc, so one standing on edge reaches
+     18.75 mm below its centre and a connector at z = 0.5 U has its rim exactly on the desk. On a
+     fixed foot that is the point; on a hub it is not. The desk pushes the scraping carriage up, the
+     bearing fights the contact, and the pair report enormous loads and tear out under no load at
+     all: the slider pattern read 145 N under its own 9 g weight until its rails were raised. */
+  s.conns.forEach(function (K) {
+    if (!K.joints.some(function (j) { return j.type === "hole"; })) return;      // only moving parts care
+    var flat = Math.abs(K.n[2]);                                                 // 1 = lying flat, 0 = on edge
+    var low = K.pos[2] - D.connR * Math.sqrt(Math.max(0, 1 - flat * flat)) - 0.5 * D.connT * flat;
+    if (low < 0.5) issue("warn", K.line, K.name + " turns on a rod but its rim reaches " + low.toFixed(1) +
+      " mm above the table: a bearing that scrapes the desk fights the contact and reads far more load than it carries. Raise it.");
+  });
   s.rods.forEach(function (R) {
     var ends = R.joints.filter(function (j) { return j.type === "end"; }).length, mid = R.joints.length - ends;
     if (!R.joints.length) issue("warn", R.line, "rod " + R.color + " line " + R.line + " is loose");
@@ -729,7 +747,21 @@ KNEX.toJSON = function (s) {
     rods: s.rods.map(function (R) { return { id: R.id, color: R.color, flexi: R.flexi, beam: R.beam, body: bodyOf.get(R), bow: R.bow || 0, tan0: R.tan0 || null, tan1: R.tan1 || null, p0: R.p0, p1: R.p1, t0: R.t0, t1: R.t1, len: R.len, L: R.L, line: R.line, step: R.step,
       joints: R.joints.map(function (j) { return { type: j.type, conn: j.conn, slot: j.slot, t: j.t }; }) }; }),
     spacers: s.spacers.map(function (P) { return { pos: P.pos, n: P.n, size: P.size, th: P.th, step: P.step, body: bodyOf.get(s.rods[P.rod]) }; }),
-    extras: s.extras, loads: s.loads || []
+    extras: s.extras, loads: s.loads || [],
+    /* The mechanisms. These used to stop here: the viewer got connectors, rods and spacers and
+       nothing else, so a rig held together by seventeen rubber bands drew as if it had none, and
+       motors, gears, balls and ballast were invisible too. Anything the bench should be able to
+       draw or label has to survive the trip through JSON. */
+    tendons: (s.tendons || []).map(function (T) {
+      return { name: T.name, kind: T.kind, rest: T.rest, L0: T.L0, k: T.k, line: T.line, step: T.step,
+               pts: T.pts.map(function (p) { return { conn: p.conn || null, ball: p.ball || null, pos: p.pos }; }) };
+    }),
+    motors: (s.motors || []).map(function (M) { return { name: M.name, conn: M.conn, rpm: M.rpm, torque: M.torque, line: M.line, step: M.step }; }),
+    gears:  (s.gears  || []).map(function (G) { return { name: G.name, conn: G.conn, r: G.r, teeth: G.teeth, mesh: G.mesh || [], line: G.line, step: G.step }; }),
+    locks:  (s.locks  || []).map(function (L) { return { name: L.name, conn: L.conn, line: L.line, step: L.step }; }),
+    balls:  (s.balls  || []).map(function (O) { return { label: O.label, pos: O.pos || (O.at ? KNEX.V.mul(O.at, s.U) : null), mass: O.mass, r: O.r, line: O.line, step: O.step }; }),
+    weights: (s.weights || []).map(function (W) { return { label: W.label, conn: W.conn, pos: W.pos, mass: W.mass, line: W.line, step: W.step }; }),
+    anchors: (s.anchors || []).map(function (A) { return { conn: A.conn, line: A.line }; })
   };
 };
 if (typeof module !== "undefined") module.exports = KNEX;
@@ -818,7 +850,15 @@ KNEX.bodies = function (s) {
   var bearings = [];
   s.conns.forEach(function (K) {
     K.joints.forEach(function (j) {
-      if (j.type !== "hole" || s.rods[j.rod].beam) return;
+      if (j.type !== "hole") return;
+      /* A compliant rod already ties its own two anchors together as a beam, so a hub that IS one of
+         those anchors must not be constrained twice. Any OTHER hub on it is a real bearing and used
+         to be dropped on the floor: under FLEX every rod is a beam, so every bearing in the model
+         disappeared and anything riding an axle simply fell off. */
+      if (s.rods[j.rod].beam) {
+        var sp = (s.springs || []).filter(function (x) { return x.rod === j.rod; })[0];
+        if (!sp || sp.a === K.name || sp.b === K.name) return;
+      }
       var A = parts[idx.get(K)].body, B = parts[idx.get(s.rods[j.rod])].body;
       if (A === B) return;
       bearings.push({ conn: K.name, rod: j.rod, a: A, b: B, axis: s.rods[j.rod].u || V.unit(V.sub(s.rods[j.rod].p1, s.rods[j.rod].p0)), at: K.pos });
@@ -1003,7 +1043,12 @@ KNEX.phys.world = function (s, opts) {
         B.feat.push({ p: V.mul(p.c, MM), r: D.hubOD / 2 * MM, part: p });
         KNEX.KINDS[p.ref.kind].slots.forEach(function (k) {              // two samples along each arm
           var d = V.rot(p.ref.e1, p.axis, k * 45);
-          [13, 18].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
+          /* Spheres of radius 4 along each arm, placed so the OUTER one just reaches the rim at connR
+             and no further. They used to sit at 18 with radius 4, which made every connector 22 mm in
+             radius instead of 18.75: a connector at its natural resting height of 0.5 U then dug
+             3.25 mm into the desk, and the contact pushing it out fought whatever held it. That is
+             where the slider's phantom 145 N came from, and why FLEX looked unusable. */
+          [D.connR - 10, D.connR - 4].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
         });
       }
     });

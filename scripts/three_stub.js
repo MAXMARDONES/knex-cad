@@ -16,13 +16,24 @@ V3.prototype = {
   cross: function (v) { return this.set(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x); },
   dot: function (v) { return this.x * v.x + this.y * v.y + this.z * v.z; },
   applyAxisAngle: function () { return this; }, applyMatrix4: function () { return this; },
+  /* Real rotation, not a no-op: bands are positioned by rotating a point into a body's frame, and a
+     stub that silently returned the input would let a broken transform pass the smoke test. */
+  applyQuaternion: function (q) {
+    var ix = q.w * this.x + q.y * this.z - q.z * this.y, iy = q.w * this.y + q.z * this.x - q.x * this.z,
+        iz = q.w * this.z + q.x * this.y - q.y * this.x, iw = -q.x * this.x - q.y * this.y - q.z * this.z;
+    return this.set(ix * q.w + iw * -q.x + iy * -q.z - iz * -q.y,
+                    iy * q.w + iw * -q.y + iz * -q.x - ix * -q.z,
+                    iz * q.w + iw * -q.z + ix * -q.y - iy * -q.x);
+  },
   toArray: function () { return [this.x, this.y, this.z]; }, setFromMatrixPosition: function () { return this; }
 };
 function noop() { return this; }
 function Obj3() { this.children = []; this.userData = {}; this.position = new V3(); this.rotation = { x: 0, y: 0, z: 0, order: "XYZ" };
   this.quaternion = { set: noop, setFromUnitVectors: noop, copy: noop, x: 0, y: 0, z: 0, w: 1 };
   this.scale = new V3(1, 1, 1); this.visible = true; this.matrix = {}; }
-Obj3.prototype.add = function (o) { this.children.push(o); return this; };
+Obj3.prototype.add = function (o) { this.children.push(o); o.parent = this; return this; };
+Obj3.prototype.localToWorld = function (v) { return v.applyQuaternion(this.quaternion).add(this.position); };
+Obj3.prototype.worldToLocal = function (v) { return v.sub(this.position); };
 Obj3.prototype.remove = function (o) { var i = this.children.indexOf(o); if (i >= 0) this.children.splice(i, 1); return this; };
 Obj3.prototype.traverse = function (f) { f(this); this.children.forEach(function (c) { if (c.traverse) c.traverse(f); else f(c); }); };
 Obj3.prototype.applyMatrix4 = noop; Obj3.prototype.lookAt = noop; Obj3.prototype.getWorldDirection = function () { return new V3(0, 0, -1); };

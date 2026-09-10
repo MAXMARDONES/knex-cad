@@ -21,6 +21,34 @@ I  W8=32 blue=18 ...          # inventory (parts list is checked against it)
 #  comment
 ```
 
+### Mechanisms, loads and the world
+
+These drive things and hold things down. They are what turns a shape into a machine, and every one of
+them is simulated.
+
+```
+E  name a b [rest=mm] [k=N/mm]      # rubber band: pulls only, never pushes. rest defaults to 0.6 x span
+Y  name a b [via=c,d] [slack=mm]    # string over guides: inextensible in tension, limp otherwise
+M  name conn [rpm=] [torque=N.mm]   # motor at a hub joint: spins the rod against whatever holds it
+G  name conn [teeth=]               # gear on that connector's axle; two that touch drive each other
+L  conn                             # tan clip: locks that hub to its rod so the two turn together
+O  name x,y,z [d=mm] [mass=g]       # ball: a sphere with mass that rolls and collides
+A  conn                             # anchor: clamp that connector to the table so the rig cannot tip
+W  name conn mass=g                 # weight hung there: ballast, a counterweight, a test load
+Z  conn [label]                     # port: this connector is where another module attaches
+FLEX [on|off]                       # treat EVERY rod as a bending beam rather than rigid structure
+```
+
+**`A` is the one people miss.** Without an anchor or feet on the table, a rig is held by nothing, and
+an `F` on it is a rocket: the model accelerates off the desk for as long as you press. `sim` says so
+now rather than quietly reporting the distance it travelled.
+
+**`FLEX` is a different physics, not a detail setting.** By default a triangulated group is welded
+into one rigid body, which is why a braced frame is stiff and why the rods inside it report no force
+of their own. Under `FLEX` every rod becomes a compliant beam: rods bend, stress appears everywhere,
+and nothing is welded. Use it for a slender chain — a pole that whips when you wave it — and expect a
+large braced model to be slower and harder to settle.
+
 ## Modules
 
 Design a sub-assembly once, place it as often as you like. This is how you work on a big model: get one

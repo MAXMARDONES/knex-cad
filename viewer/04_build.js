@@ -12,7 +12,13 @@ function label(text, pos) {
   var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true }));
   sp.scale.set(44, 11, 1); sp.position.copy(pos).add(new THREE.Vector3(0, 14, 0)); return sp;
 }
-var BODYG = [], BEAMMESH = {};
+var BODYG = [], BEAMMESH = {}, BANDS = [];
+function bandGeo(pts, r) {                       // a tube along the band's route; 2+ points, no duplicates
+  var clean = pts.filter(function (p, i) { return i === 0 || p.distanceTo(pts[i - 1]) > 1e-4; });
+  if (clean.length < 2) clean = [pts[0], pts[0].clone().add(new THREE.Vector3(0, 0.01, 0))];
+  var curve = clean.length > 2 ? new THREE.CatmullRomCurve3(clean) : new THREE.LineCurve3(clean[0], clean[1]);
+  return new THREE.TubeGeometry(curve, Math.max(2, clean.length * 6), r, 7, false);
+}
 var MODEL = null;
 function bodyGroup(i) {                          // one group per rigid body, so the physics can move them
   if (BODYG[i]) return BODYG[i];
@@ -26,7 +32,7 @@ function place(mesh, bodyId) {                   // add a world-space mesh into 
   mesh.position.sub(g.userData.rest); g.add(mesh); return mesh;
 }
 function rebuild(solved, refit) {
-  MODEL = solved; window.MODEL = solved; while (world.children.length) world.remove(world.children[0]); PARTS = []; labelSprites = []; BODYG = []; BEAMMESH = {};
+  MODEL = solved; window.MODEL = solved; while (world.children.length) world.remove(world.children[0]); PARTS = []; labelSprites = []; BODYG = []; BEAMMESH = {}; BANDS = [];
   var D = KNEX.DIMS;
   solved.conns.forEach(function (K) {
     var hex = KNEX.RGB[KNEX.KINDS[K.kind].color], g = new THREE.Mesh(connGeo(K.kind), mat(hex));
@@ -56,7 +62,7 @@ function rebuild(solved, refit) {
       m.position.copy(a).lerp(b, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
     }
     m.userData = { type: "rod", ref: R, step: R.step, body: R.body };
-    if (R.beam) { world.add(m); BEAMMESH[R.id] = { mesh: m, rod: R, hex: hex }; }   // deforms: lives in world space
+    if (R.beam) { m.userData.beamMesh = true; world.add(m); BEAMMESH[R.id] = { mesh: m, rod: R, hex: hex }; }   // deforms: lives in world space
     else place(m, R.body);
     PARTS.push(m);
   });
@@ -76,6 +82,26 @@ function rebuild(solved, refit) {
     m.userData.body = pid ? pid.id : null; place(m, m.userData.body); PARTS.push(m);
   });
   labelSprites.forEach(function (s) { s.userData = { type: "label" }; world.add(s); });
+  /* Rubber bands and strings. They are force elements, not parts, so they were simulated but never
+     drawn: a rig held together by seventeen bands looked like it was held by nothing. Each one is a
+     polyline through its route, rebuilt every frame in bandsApply because its ends move. */
+  BANDS = [];
+  (MODEL.tendons || []).forEach(function (T) {
+    var pts = T.pts.map(function (p) { return toThree(p.pos); });
+    /* A tube, not a THREE.Line: a one-pixel line disappears inside a model this dense, and a rubber
+       band should read as a band. Seventeen short tubes rebuild per frame without trouble. */
+    var r = T.kind === "band" ? 2.6 : 1.3;
+    /* Lit like a part it disappears into the model, so a band is drawn flat: it is a force element,
+       and reading it at a glance matters more than making it look like moulded plastic. */
+    var line = new THREE.Mesh(bandGeo(pts, r),
+      new THREE.MeshBasicMaterial({ color: T.kind === "band" ? 0xFF6A1F : 0xF2F2F0 }));
+    line.userData = { type: "band", label: T.name, kind: T.kind, step: T.step, ref: T, radius: r };
+    world.add(line); PARTS.push(line);
+    BANDS.push({ line: line, T: T, nodes: T.pts.map(function (p) {
+      var K = p.conn ? MODEL.conns.filter(function (c) { return c.name === p.conn; })[0] : null;
+      return { body: K ? K.body : null, pos: p.pos };                 // which body carries this end
+    }) });
+  });
   (MODEL.loads || []).forEach(function (L) {                    // a cone where each external force acts
     var K = MODEL.conns.filter(function (c) { return c.name === L.at; })[0]; if (!K) return;
     var m = new THREE.Mesh(new THREE.ConeGeometry(6, 18, 10), new THREE.MeshBasicMaterial({ color: 0xE8531A }));

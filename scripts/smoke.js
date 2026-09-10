@@ -79,6 +79,21 @@ step("the physics steps", function () {
 });
 step("bending rods reshape", function () { counts.warn = 0; ctx.beamsApply(); if (counts.warn) throw new Error(counts.lastWarn); });
 step("the stress view applies", function () { ctx.STRESS.on = true; ctx.stressApply(); ctx.STRESS.on = false; });
+step("rubber bands are drawn and follow the model", function () {
+  var want = (ctx.MODEL.tendons || []).length;
+  if (ctx.BANDS.length !== want) throw new Error("model has " + want + " bands, viewer drew " + ctx.BANDS.length);
+  counts.warn = 0; ctx.bandsApply();
+  if (counts.warn) throw new Error(counts.lastWarn);
+  if (want) {
+    if (!ctx.BANDS[0].pts || ctx.BANDS[0].pts.length < 2) throw new Error("band route has no points");
+  }
+});
+step("the demo picker offers every build", function () {
+  var n = Object.keys(ctx.DEMOS || {}).length;
+  if (n < 2) throw new Error("only " + n + " demo(s) embedded; the picker needs the builds/ directory");
+  var files = require("fs").readdirSync(require("path").join(__dirname, "..", "builds")).filter(function (f) { return /\.knx$/.test(f); });
+  if (n !== files.length) throw new Error(files.length + " builds on disk but " + n + " in the picker: two share a title and one was lost");
+});
 step("the readout renders", function () { ctx.physReadout(); });
 step("every build step draws, and hides the later ones", function () {
   var el = ctx.document.getElementById("step"), n = ctx.MODEL.steps.length;

@@ -38,6 +38,18 @@ KNEX.check = function (m, s) {
   }
   // floating parts
   s.conns.forEach(function (K) { if (!K.joints.length && !K.pair) issue("warn", K.line, K.name + " (" + K.kind + ") touches nothing"); });
+  /* A bearing resting on the table. A connector is a 37.5 mm disc, so one standing on edge reaches
+     18.75 mm below its centre and a connector at z = 0.5 U has its rim exactly on the desk. On a
+     fixed foot that is the point; on a hub it is not. The desk pushes the scraping carriage up, the
+     bearing fights the contact, and the pair report enormous loads and tear out under no load at
+     all: the slider pattern read 145 N under its own 9 g weight until its rails were raised. */
+  s.conns.forEach(function (K) {
+    if (!K.joints.some(function (j) { return j.type === "hole"; })) return;      // only moving parts care
+    var flat = Math.abs(K.n[2]);                                                 // 1 = lying flat, 0 = on edge
+    var low = K.pos[2] - D.connR * Math.sqrt(Math.max(0, 1 - flat * flat)) - 0.5 * D.connT * flat;
+    if (low < 0.5) issue("warn", K.line, K.name + " turns on a rod but its rim reaches " + low.toFixed(1) +
+      " mm above the table: a bearing that scrapes the desk fights the contact and reads far more load than it carries. Raise it.");
+  });
   s.rods.forEach(function (R) {
     var ends = R.joints.filter(function (j) { return j.type === "end"; }).length, mid = R.joints.length - ends;
     if (!R.joints.length) issue("warn", R.line, "rod " + R.color + " line " + R.line + " is loose");

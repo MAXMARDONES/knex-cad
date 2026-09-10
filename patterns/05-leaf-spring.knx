@@ -2,10 +2,18 @@ T Leaf spring
 # The soft spring of the system: a long rod socketed at one end, passing through a hub at the other.
 # The sliding end carries no moment, so it is 4x softer than the same rod socketed at both ends.
 # k = 3EI/L^3, so swapping the rod colour retunes it hard: a red is 2.8x softer than a yellow.
+# Here k = 0.27 N/mm, and the 0.5 N press below deflects it 1.9 mm: sim agrees with the formula.
+#
+# BALANCE THE PLATE about the hub. A hub joint carries no moment at all, so any mass hanging to one
+# side is a pendulum: it swings, levers the rod out of its socket, and the whole plate comes loose.
+# This pattern used to have a single arm and it snapped at 115% of capacity while merely settling.
+# Push through the hub too: a force applied out on an arm just spins the plate about the axle.
 ! anchor at the bottom, sliding plate at the top
 C ANC W8 0,0,0.5 x y
 R ANC 0,0,4.5 red beam
 H PL1 W8 0,0,3.5 x
-C PL2 W8 2,0,3.5
-R PL1 PL2
-F PL2 0,-2,0 push
+C PLa W8 1,0,3.5
+C PLb W8 -1,0,3.5
+R PL1 PLa
+R PL1 PLb
+F PL1 0,-0.5,0 push

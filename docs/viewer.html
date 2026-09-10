@@ -43,7 +43,7 @@
                 border-radius:8px; overflow:hidden; background:var(--surface); }
   #handsPanel.on { display:block; }
   #handsPanel video { width:200px; height:150px; object-fit:cover; transform:scaleX(-1); display:block; }
-  #handsPanel canvas { position:absolute; left:0; top:0; width:200px; height:150px; }
+  #handsPanel canvas { position:absolute; left:0; top:0; width:200px; height:150px; pointer-events:none; }
   #handsPanel .cap { font-family:var(--mono); font-size:10px; color:var(--muted); padding:5px 7px; line-height:1.35; }
   #legend { position:absolute; right:12px; bottom:74px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
             padding:8px 10px; font-family:var(--mono); font-size:11px; display:none; }
@@ -99,6 +99,7 @@
 </style>
 <header>
   <h1 id="title">K'NEX Rig Bench</h1>
+  <select id="demoPick" class="act" title="load another build"></select>
   <span class="sub"><span class="live" id="live"></span><span id="livetxt">local build</span></span>
   <span class="pill" id="pcount">0 parts</span>
   <span class="pill ok" id="pissues">0 issues</span>
@@ -113,6 +114,13 @@
     <div id="handsPanel">
       <video id="handsVideo" playsinline muted></video>
       <canvas id="handsCanvas" width="200" height="150"></canvas>
+      <div class="cap">
+        <div id="handsStat">looking for a hand&hellip;</div>
+        <label style="display:flex;gap:5px;align-items:center;margin-top:4px">
+          <input type="checkbox" id="handsLock"> latch the grip
+        </label>
+        <div style="margin-top:3px;opacity:.75">pinch to grab &middot; roll your wrist to twist &middot; open palm pushes</div>
+      </div>
       <div class="cap">pinch to grab · move to pull · roll to twist · open palm to push</div>
     </div>
     <div id="legend">
@@ -712,8 +720,14 @@ KNEX.solve = function (m) {
         if (rod.beam) {                      // a bending rod leaves its socket straight and curves after: allow the angle
           var lim = rod.flexi ? 60 : 25;      // a stiff rod can only be persuaded so far before the socket lets go
           for (var kf = 0; kf < 8; kf++) { var af = V.angleDeg(K.slotDir(kf), away); if (af < bestA && af < lim && slots.indexOf(kf) >= 0 && !K.used["s" + kf]) { bestA = af; bestK = kf; } }
-          if (bestK < 0) issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + ")");
-          else { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          /* No socket does not mean no joint. A rod ending at a connector's centre and lying along its
+             normal goes THROUGH the hub, and the other half of a 3D pair can hold one too. The rigid
+             path has always allowed both; the bending path used to demand a socket and called every
+             axle in the model an error, which is what made FLEX unusable on anything with a bearing. */
+          if (bestK >= 0) { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          else if (along) { j = { type: "hole", t: atEnd }; }
+          else if (K.pair && Math.abs(V.dot(away, out.byName[K.pair].n)) < 0.08) { /* its 3D partner holds it */ }
+          else issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + "), and it does not run through the hub either");
         } else {
         for (var k = 0; k < 8; k++) { var a = V.angleDeg(K.slotDir(k), away); if (a < bestA) { bestA = a; bestK = k; } }
         if (bestA < D.tolAng) {
@@ -863,6 +877,18 @@ KNEX.check = function (m, s) {
   }
   // floating parts
   s.conns.forEach(function (K) { if (!K.joints.length && !K.pair) issue("warn", K.line, K.name + " (" + K.kind + ") touches nothing"); });
+  /* A bearing resting on the table. A connector is a 37.5 mm disc, so one standing on edge reaches
+     18.75 mm below its centre and a connector at z = 0.5 U has its rim exactly on the desk. On a
+     fixed foot that is the point; on a hub it is not. The desk pushes the scraping carriage up, the
+     bearing fights the contact, and the pair report enormous loads and tear out under no load at
+     all: the slider pattern read 145 N under its own 9 g weight until its rails were raised. */
+  s.conns.forEach(function (K) {
+    if (!K.joints.some(function (j) { return j.type === "hole"; })) return;      // only moving parts care
+    var flat = Math.abs(K.n[2]);                                                 // 1 = lying flat, 0 = on edge
+    var low = K.pos[2] - D.connR * Math.sqrt(Math.max(0, 1 - flat * flat)) - 0.5 * D.connT * flat;
+    if (low < 0.5) issue("warn", K.line, K.name + " turns on a rod but its rim reaches " + low.toFixed(1) +
+      " mm above the table: a bearing that scrapes the desk fights the contact and reads far more load than it carries. Raise it.");
+  });
   s.rods.forEach(function (R) {
     var ends = R.joints.filter(function (j) { return j.type === "end"; }).length, mid = R.joints.length - ends;
     if (!R.joints.length) issue("warn", R.line, "rod " + R.color + " line " + R.line + " is loose");
@@ -941,7 +967,21 @@ KNEX.toJSON = function (s) {
     rods: s.rods.map(function (R) { return { id: R.id, color: R.color, flexi: R.flexi, beam: R.beam, body: bodyOf.get(R), bow: R.bow || 0, tan0: R.tan0 || null, tan1: R.tan1 || null, p0: R.p0, p1: R.p1, t0: R.t0, t1: R.t1, len: R.len, L: R.L, line: R.line, step: R.step,
       joints: R.joints.map(function (j) { return { type: j.type, conn: j.conn, slot: j.slot, t: j.t }; }) }; }),
     spacers: s.spacers.map(function (P) { return { pos: P.pos, n: P.n, size: P.size, th: P.th, step: P.step, body: bodyOf.get(s.rods[P.rod]) }; }),
-    extras: s.extras, loads: s.loads || []
+    extras: s.extras, loads: s.loads || [],
+    /* The mechanisms. These used to stop here: the viewer got connectors, rods and spacers and
+       nothing else, so a rig held together by seventeen rubber bands drew as if it had none, and
+       motors, gears, balls and ballast were invisible too. Anything the bench should be able to
+       draw or label has to survive the trip through JSON. */
+    tendons: (s.tendons || []).map(function (T) {
+      return { name: T.name, kind: T.kind, rest: T.rest, L0: T.L0, k: T.k, line: T.line, step: T.step,
+               pts: T.pts.map(function (p) { return { conn: p.conn || null, ball: p.ball || null, pos: p.pos }; }) };
+    }),
+    motors: (s.motors || []).map(function (M) { return { name: M.name, conn: M.conn, rpm: M.rpm, torque: M.torque, line: M.line, step: M.step }; }),
+    gears:  (s.gears  || []).map(function (G) { return { name: G.name, conn: G.conn, r: G.r, teeth: G.teeth, mesh: G.mesh || [], line: G.line, step: G.step }; }),
+    locks:  (s.locks  || []).map(function (L) { return { name: L.name, conn: L.conn, line: L.line, step: L.step }; }),
+    balls:  (s.balls  || []).map(function (O) { return { label: O.label, pos: O.pos || (O.at ? KNEX.V.mul(O.at, s.U) : null), mass: O.mass, r: O.r, line: O.line, step: O.step }; }),
+    weights: (s.weights || []).map(function (W) { return { label: W.label, conn: W.conn, pos: W.pos, mass: W.mass, line: W.line, step: W.step }; }),
+    anchors: (s.anchors || []).map(function (A) { return { conn: A.conn, line: A.line }; })
   };
 };
 if (typeof module !== "undefined") module.exports = KNEX;
@@ -1030,7 +1070,15 @@ KNEX.bodies = function (s) {
   var bearings = [];
   s.conns.forEach(function (K) {
     K.joints.forEach(function (j) {
-      if (j.type !== "hole" || s.rods[j.rod].beam) return;
+      if (j.type !== "hole") return;
+      /* A compliant rod already ties its own two anchors together as a beam, so a hub that IS one of
+         those anchors must not be constrained twice. Any OTHER hub on it is a real bearing and used
+         to be dropped on the floor: under FLEX every rod is a beam, so every bearing in the model
+         disappeared and anything riding an axle simply fell off. */
+      if (s.rods[j.rod].beam) {
+        var sp = (s.springs || []).filter(function (x) { return x.rod === j.rod; })[0];
+        if (!sp || sp.a === K.name || sp.b === K.name) return;
+      }
       var A = parts[idx.get(K)].body, B = parts[idx.get(s.rods[j.rod])].body;
       if (A === B) return;
       bearings.push({ conn: K.name, rod: j.rod, a: A, b: B, axis: s.rods[j.rod].u || V.unit(V.sub(s.rods[j.rod].p1, s.rods[j.rod].p0)), at: K.pos });
@@ -1215,7 +1263,12 @@ KNEX.phys.world = function (s, opts) {
         B.feat.push({ p: V.mul(p.c, MM), r: D.hubOD / 2 * MM, part: p });
         KNEX.KINDS[p.ref.kind].slots.forEach(function (k) {              // two samples along each arm
           var d = V.rot(p.ref.e1, p.axis, k * 45);
-          [13, 18].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
+          /* Spheres of radius 4 along each arm, placed so the OUTER one just reaches the rim at connR
+             and no further. They used to sit at 18 with radius 4, which made every connector 22 mm in
+             radius instead of 18.75: a connector at its natural resting height of 0.5 U then dug
+             3.25 mm into the desk, and the contact pushing it out fought whatever held it. That is
+             where the slider's phantom 145 N came from, and why FLEX looked unusable. */
+          [D.connR - 10, D.connR - 4].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
         });
       }
     });
@@ -1849,7 +1902,10 @@ KNEX.gen = (function () {
   return { path: path, truss: truss, arch: arch, legs: legs, MOVES: MOVES };
 })();
 </script>
-<script>var EMBEDDED_KNX = "T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! Centring springs: four compliant zigzags from the frame up to the deck. They are the only thing\n! holding the bed level, and the only place to tune how firm the controller feels.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\n! Zigzag: yellow then white, both bending. Swap the yellow for a grey to soften it, or add a segment.\n! Stiffness table: node cli.js spring\nC ZLF1 W8 -2,3,3.5 x y\nC ZLF2 W8 -2,2,4.5 x y\nR NL ZLF1 yellow beam\nR ZLF1 ZLF2 white beam\nR ZLF2 UL2\nC ZLB1 W8 -2,-3,3.5 x y\nC ZLB2 W8 -2,-2,4.5 x y\nR SL ZLB1 yellow beam\nR ZLB1 ZLB2 white beam\nR ZLB2 UL1\nC ZRF1 W8 2,3,3.5 x y\nC ZRF2 W8 2,2,4.5 x y\nR NR ZRF1 yellow beam\nR ZRF1 ZRF2 white beam\nR ZRF2 UR2\nC ZRB1 W8 2,-3,3.5 x y\nC ZRB2 W8 2,-2,4.5 x y\nR SR ZRB1 yellow beam\nR ZRB1 ZRB2 white beam\nR ZRB2 UR1\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n";</script>
+<script>var EMBEDDED_KNX = "T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! Centring springs: four compliant zigzags from the frame up to the deck. They are the only thing\n! holding the bed level, and the only place to tune how firm the controller feels.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\n! Zigzag: yellow then white, both bending. Swap the yellow for a grey to soften it, or add a segment.\n! Stiffness table: node cli.js spring\nC ZLF1 W8 -2,3,3.5 x y\nC ZLF2 W8 -2,2,4.5 x y\nR NL ZLF1 yellow beam\nR ZLF1 ZLF2 white beam\nR ZLF2 UL2\nC ZLB1 W8 -2,-3,3.5 x y\nC ZLB2 W8 -2,-2,4.5 x y\nR SL ZLB1 yellow beam\nR ZLB1 ZLB2 white beam\nR ZLB2 UL1\nC ZRF1 W8 2,3,3.5 x y\nC ZRF2 W8 2,2,4.5 x y\nR NR ZRF1 yellow beam\nR ZRF1 ZRF2 white beam\nR ZRF2 UR2\nC ZRB1 W8 2,-3,3.5 x y\nC ZRB2 W8 2,-2,4.5 x y\nR SR ZRB1 yellow beam\nR ZRB1 ZRB2 white beam\nR ZRB2 UR1\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n";
+/* Every build in builds/ travels with the page, so the demo picker works from a file:// URL with no
+   server. The one passed to build_viewer.sh is the one that opens. */
+var DEMOS = {"Generated span":"T Generated span\n# The two piers were written by hand. Everything between them was generated:\n#   node cli.js bridge builds/demo_bridge.knx LT RT --style arch --rod blue --rod blue --segments 6 --append\n# Try the other techniques on the same two points: --style truss, line, slide.\n# The pier tops lie in the xz plane, which is the plane the arch springs in. A connector is a plane, and\n# an arch can only land on one that contains it.\n! two piers\nC LA W8 -4,0,0.5 y x\nC LT W8 -4,0,4.5 y x\nR LA LT\nC RA W8 4,0,0.5 y x\nC RT W8 4,0,4.5 y x\nR RA RT\nA LA\nA RA\n\n! bridge LT to RT, arch\nC BR1 W8 -3.3908,0,6.405\nC BR2 W8 -1.9367,0,7.7781\nC BR3 W8 0,0,8.2773\nC BR4 W8 1.9367,0,7.7781\nC BR5 W8 3.3908,0,6.405\nR LT BR1 blue beam\nR BR1 BR2 blue beam\nR BR2 BR3 blue beam\nR BR3 BR4 blue beam\nR BR4 BR5 blue beam\nR BR5 RT blue beam\n","Mechanism demo: motor, gears, string, band, ball":"T Mechanism demo: motor, gears, string, band, ball\n# Every element the physics engine knows, in one rig small enough to build.\n# Note the feet: two posts in parallel planes can only be tied together through 3D connector pairs.\n! two triangular posts, in the planes x = -2 and x = +2\nC LB B7 -2,-2,0.5 x y\nC LB2 B7 -2,-2,0.5 y x\nC LF B7 -2,2,0.5 x y\nC LF2 B7 -2,2,0.5 y x\nC LT W8 -2,0,2.5 x y\nR LB LF\nR LB LT\nR LF LT\nC RB B7 2,-2,0.5 x y\nC RB2 B7 2,-2,0.5 y x\nC RF B7 2,2,0.5 x y\nC RF2 B7 2,2,0.5 y x\nC RT W8 2,0,2.5 x y\nR RB RF\nR RB RT\nR RF RT\n! tie the two posts together through the 3D halves, so the frame is one rigid body\nR LB2 RB2\nR LF2 RF2\n! drive axle through both post tops, capped. The motor turns it against the frame.\nR -2.828,0,2.5 2.828,0,2.5 grey\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\nC DL D1 -2.828,0,2.5 y x\nC DR D1 2.828,0,2.5 y -x\nG g1 LT teeth=34\nM motor LT rpm=45 torque=400\n! idler axle one white rod away: exactly the 34 tooth mesh distance, so g1 drives g2\nC LI W8 -2,1,3.5 x y\nC RI W8 2,1,3.5 x y\nR LT LI\nR RT RI\nR -2.828,1,3.5 2.828,1,3.5 grey\nP -2.2,1,3.5 silver\nP -1.8,1,3.5 silver\nP 1.8,1,3.5 silver\nP 2.2,1,3.5 silver\nC IL D1 -2.828,1,3.5 y x\nC IR D1 2.828,1,3.5 y -x\nG g2 LI teeth=34\n! a lever locked to the idler axle by a tan clip, and a rubber band pulling it back\nH LV W8 1,1,3.5 z\nP 0.8,1,3.5 silver\nP 1.2,1,3.5 silver\nL LV\nC LVT W8 1,3,3.5 z x\nR LV LVT\nE band LVT RF rest=45\n! a ball hanging on a string from the left post\nO ball -2,-2,1.6 d=25 mass=40\nY tether LT ball\n","Modular gantry":"T Modular gantry\n# Designed as one module placed four times, not as one long list of parts.\n# Every tower is identical; only where it sits changes. The ports say where the deck attaches,\n# and the checker tells you whether a rod actually spans the gap between two of them.\nX payload 0,0,0.6 90,90,45 #3B4252 mass=120\nMOD tower\n  C foot W8 0,0,0.5 x y\n  C mid  W8 0,0,1.5 x y\n  C top  B7 0,0,2.5 x y\n  C top2 B7 0,0,2.5 z x\n  R foot mid\n  R mid top\n  Z top2 deck\n  Z mid brace\nEND\n! four towers, one module placed four times\nUSE tower SW at=-2,-2,0\nUSE tower SE at=2,-2,0\nUSE tower NE at=2,2,0\nUSE tower NW at=-2,2,0\n! the deck the ports were waiting for: 4 U between towers, so red rods\nR SW.top2 SE.top2\nR SE.top2 NE.top2\nR NE.top2 NW.top2\nR NW.top2 SW.top2\nR SW.top2 NE.top2\n! braces down the sides, in the vertical planes the towers already live in\nR SW.mid SE.mid\nR NW.mid NE.mid\n","Fishing pole":"T Fishing pole\n# FLEX makes every rod a bending beam instead of rigid structure. A braced frame is genuinely rigid,\n# but a slender chain of rods is not: wave this and it whips, exactly like the real thing.\n# Grab the tip in the bench, with the mouse or with your hand, and shake it.\nFLEX\n! butt: clamped to the table\nC H0 W8 0,0,1.5 x y\nC H1 W8 0,0,0.5 x y\nR H0 H1\nA H1\n! the pole: eight red rods end to end, each one bending\nC P1 W8 0,4,1.5 x y\nC P2 W8 0,8,1.5 x y\nC P3 W8 0,12,1.5 x y\nC P4 W8 0,16,1.5 x y\nC P5 W8 0,20,1.5 x y\nC P6 W8 0,24,1.5 x y\nC P7 W8 0,28,1.5 x y\nR H0 P1\nR P1 P2\nR P2 P3\nR P3 P4\nR P4 P5\nR P5 P6\nR P6 P7\nF P7 0,0,-2 tip\n","Props on the table":"T Props on the table\n# Everything in the catalogue, with its real size, mass and friction, sitting on a rig you can knock over.\n# node cli.js props lists them. Grab one in the bench and throw it at the tower.\n! a tower to knock down: two A-frames tied by an axle through their tops\nC B1 W8 -1,-2,0.5 x y\nC B2 W8 -1,2,0.5 x y\nC B3 W8 1,-2,0.5 x y\nC B4 W8 1,2,0.5 x y\nC T1 W8 -1,0,2.5 x y\nC T2 W8 1,0,2.5 x y\nR B1 B2\nR B3 B4\nR B1 T1\nR B2 T1\nR B3 T2\nR B4 T2\nR -1,0,2.5 1,0,2.5 blue\n! the props: real mass, real friction, real shapes\nX phone -3,-2,0.13\nX book 3,-2,0.3\nX weight -3,1,0.55\nX bottle 3,1,2.867\nX can -2,3,1.535\nX ball 0,-4,0.58\nX ball-tennis 2,3,0.9\nX coin 2,-4,0.03\n! one thrown at the tower, so something happens the moment you press run\nX ball-steel -4,0,1.5 vel=2.2,0,0.4 spin=0,14,0\n","Jazz Snow K'NEX tilt rig v2":"T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! Centring springs: four compliant zigzags from the frame up to the deck. They are the only thing\n! holding the bed level, and the only place to tune how firm the controller feels.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\n! Zigzag: yellow then white, both bending. Swap the yellow for a grey to soften it, or add a segment.\n! Stiffness table: node cli.js spring\nC ZLF1 W8 -2,3,3.5 x y\nC ZLF2 W8 -2,2,4.5 x y\nR NL ZLF1 yellow beam\nR ZLF1 ZLF2 white beam\nR ZLF2 UL2\nC ZLB1 W8 -2,-3,3.5 x y\nC ZLB2 W8 -2,-2,4.5 x y\nR SL ZLB1 yellow beam\nR ZLB1 ZLB2 white beam\nR ZLB2 UL1\nC ZRF1 W8 2,3,3.5 x y\nC ZRF2 W8 2,2,4.5 x y\nR NR ZRF1 yellow beam\nR ZRF1 ZRF2 white beam\nR ZRF2 UR2\nC ZRB1 W8 2,-3,3.5 x y\nC ZRB2 W8 2,-2,4.5 x y\nR SR ZRB1 yellow beam\nR ZRB1 ZRB2 white beam\nR ZRB2 UR1\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n","Jazz Snow K'NEX tilt rig v2 (rig_leaf)":"T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! centring springs: four red rods anchored in the frame, sliding through hubs in the deck.\n! They are the only thing holding the bed level; the sim shows the rig flops without them.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\nR SL -2,-1,5.5 red beam\nR NL -2,1,5.5 red beam\nR SR 2,-1,5.5 red beam\nR NR 2,1,5.5 red beam\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n","Six-axis K'NEX robot arm, all axes driven by mechanical line":"T Six-axis K'NEX robot arm, all axes driven by mechanical linear actuators\n# U = 37.5 mm, z up, desk at z = 0. Every axis is the same mechanism: a rod that slides through two\n# guide hubs (the linear actuator), a yoke at its end carrying a pin, a coupler link with a hub at\n# each end, and a crank pin on the link being driven. Two opposed rubber bands centre each slider so\n# the arm holds a pose with no input; the F lines are the push/pull input and are declared at 0.01 N\n# so that pressing one with a gain of 300 is a 3 N push and the settle stays neutral.\n! base deck: a 4U square with a rear extension for ballast. The outer nodes are 3D pairs, because a\n! horizontal deck rod and a vertical leg are never coplanar.\nC P1 B7 2,2,1.5 z -x\nC P1v B7 2,2,1.5 x -z\nC P2 B7 2,-2,1.5 z y\nC P2v B7 2,-2,1.5 x -z\nC P3 W8 -2,-2,1.5\nC P4 W8 -2,2,1.5\nC P5 W8 -2,0,1.5\nC GB3 W8 -3,-2,1.5\nC R1 B7 -4,-2,1.5 z x\nC R1v B7 -4,-2,1.5 x -z\nC R2 B7 -4,2,1.5 z -y\nC R2v B7 -4,2,1.5 x -z\nC R3 W8 -4,0,1.5\nR P1 P2\nR P2 P3\nR P4 P1\nR P3 P5\nR P5 P4\nR P3 GB3\nR GB3 R1\nR P5 R3\nR P4 R2\nR R1 R3\nR R3 R2\nR R1 P5\nR P5 R2\n! the centre node is a 3D pair too: the deck rods lie in its plane, the yaw axle stands on its partner\nC BC B7 0,0,1.5 z x+y\nC BCV B7 0,0,1.5 y z\nR BC P1\nR BC P2\nR BC P3\nR BC P4\nR BC P5\n! feet: the only parts that touch the desk\nC FT1 W8 2,2,0.5 x y\nC FT2 W8 2,-2,0.5 x y\nC FT5 W8 -4,-2,0.5 x y\nC FT6 W8 -4,2,0.5 x y\nR FT1 P1v\nR FT2 P2v\nR FT5 R1v\nR FT6 R2v\n! ballast at the back, so the reach of the arm does not tip it\nW ballastL R1 mass=400\nW ballastR R2 mass=400\n! AXIS 1 bearing: a red rod standing on the centre pair, capped at the top\nR BCV 0,0,5.5 red\nC YCAP D1 0,0,5.5 y -z\n! the column: a braced box riding two hubs on that axle. The spacers under the lower hub turn the\n! bearing into a thrust bearing so the column cannot slide down the axle.\nH Y1 W8 0,0,2.5\nH Y2 W8 0,0,4.5\nP 0,0,2.3 silver\nP 0,0,2.7 silver\nC CA B7 1,1,2.5 z -x\nC CAv B7 1,1,2.5 x z\nC CB B7 1,-1,2.5 z y\nC CBv B7 1,-1,2.5 -y z\nC CC B7 -1,-1,2.5 z x\nC CCv B7 -1,-1,2.5 -x z\nC CD B7 -1,1,2.5 z -y\nC CDv B7 -1,1,2.5 y z\nR Y1 CA\nR Y1 CB\nR Y1 CC\nR Y1 CD\nR CA CB\nR CB CC\nR CC CD\nR CD CA\nC CA2 B7 1,1,4.5 z -x\nC CA2v B7 1,1,4.5 y -z\nC CB2 B7 1,-1,4.5 z y\nC CB2v B7 1,-1,4.5 x -z\nC CC2 B7 -1,-1,4.5 z x-y\nC CC2v B7 -1,-1,4.5 -y -z\nC CD2 B7 -1,1,4.5 z -y\nC CD2v B7 -1,1,4.5 -x -z\nR Y2 CA2\nR Y2 CB2\nR Y2 CC2\nR Y2 CD2\nR CA2 CB2\nR CB2 CC2\nR CC2 CD2\nR CD2 CA2\n! four uprights and four face diagonals, one starting and one landing at every corner\nR CAv CA2v\nR CBv CB2v\nR CCv CC2v\nR CDv CD2v\nR CAv CB2v\nR CBv CC2v\nR CCv CD2v\nR CDv CA2v\n! AXIS 1 crank: a triangulated arm off the column top reaching 2U behind the axle, with a pin\n! hanging from its tip. The coupler runs parallel to the slide, which is where the torque comes from.\nC CK2 B7 0,-2,4.5 z x\nC CK2v B7 0,-2,4.5 x -z\nR CB2 CK2\nR CC2 CK2\nC CKC D1 0,-2,3.5 x z\nR CK2v CKC\nH CY2 W8 0,-2,4\nP 0,-2,3.8 silver\nP 0,-2,4.2 silver\n! AXIS 1 actuator: a red rod sliding along x at y=-2, z=2.5, with its yoke pin standing up to z=4.5\nH CY1 W8 -2,-2,4\nP -2,-2,3.8 silver\nP -2,-2,4.2 silver\nR CY1 CY2\nC YK1 R3 -2,-2,2.5 y -x\nC PC1 D1 -2,-2,4.5 x -z\nR YK1 PC1\nC AC1 D1 -6,-2,2.5 y x\nR YK1 AC1\nH GH1 W8 -3,-2,2.5\nH GH2 W8 -4,-2,2.5\nR GH1 GB3\nR GH2 R1v\n! opposed centring bands\nE yawA1 AC1 R1 rest=68 k=0.08\nE yawA2 AC1 R1 rest=68 k=0.08\nE yawB1 YK1 GB3 rest=30 k=0.08\nE yawB2 YK1 GB3 rest=30 k=0.08\nF AC1 0.01,0,0 yaw\nF GH1 -0.01,0,0 yawr\n! AXIS 2 shoulder: a hub on the front rail of the column top. The upper arm is a flat triangle in the\n! plane y=0; the crank is the arm itself, with the pin 2U out from the bearing.\nH SH W8 1,0,4.5\nP 1,-0.2,4.5 silver\nP 1,0.2,4.5 silver\nC MIDU W8 2,0,4.5\nC UA B7 3,0,4.5 y -x\nC UAv B7 3,0,4.5 z -y\nC EL B7 3,0,6.5 y -z\nC ELv B7 3,0,6.5 z y\nR SH MIDU\nR MIDU UA\nR UA EL\nR SH EL\n! crank pin on the upper arm, coupler down and back to the slider\nC SCC D1 3,-2,4.5 x y\nR UAv SCC\nH SCP W8 3,-1,4.5\nP 3,-0.8,4.5 silver\nP 3,-1.2,4.5 silver\nH SAP W8 1,-1,6.5\nP 1,-0.8,6.5 silver\nP 1,-1.2,6.5 silver\nR SCP SAP\n! AXIS 2 actuator: a red rod sliding vertically at x=1, y=-2, guided by a hub braced into the\n! horizontal triangle of the column top\nC YK2 R3 1,-2,6.5 x -z\nC PC2 D1 1,0,6.5 x -y\nR YK2 PC2\nC AS1 D1 1,-2,2.5 x z\nR YK2 AS1\nH GS1 W8 1,-2,4.5\nR GS1 CB2\nR GS1 CK2\nE shoA YK2 CB2 rest=82 k=0.12\nE shoB1 AS1 CB2 rest=35 k=0.055\nE shoB2 AS1 CB2 rest=35 k=0.055\nE shoB3 AS1 CB2 rest=35 k=0.055\nF AS1 0,0,0.01 shoulder\nF GS1 0,0,-0.01 shoulderr\n! AXIS 3 elbow: axle cantilevered off the elbow node, forearm as an A-frame in the plane y=1\nC ECAP D1 3,2,6.5 x -y\nR ELv ECAP\nH FH W8 3,1,6.5\nP 3,0.8,6.5 silver\nP 3,1.2,6.5 silver\nC FK B7 5,1,6.5 y -x-z\nC FKv B7 5,1,6.5 z y\nC FB W8 4,1,5.5\nR FH FK\nR FH FB\nR FB FK\n! crank pin at the far end of the forearm, coupler back and down to the slider\nC ECC D1 5,3,6.5 x -y\nR FKv ECC\nH ECP W8 5,2,6.5\nP 5,1.8,6.5 silver\nP 5,2.2,6.5 silver\nH EAP W8 3,2,4.5\nP 3,1.8,4.5 silver\nP 3,2.2,4.5 silver\nR ECP EAP\n! AXIS 3 actuator: a red rod sliding along x at y=3, z=4.5, guided off a bracket on the upper arm\nC YK3 R3 3,3,4.5 z -x\nC PC3 D1 3,1,4.5 x y\nR YK3 PC3\nC AE1 D1 -1,3,4.5 y x\nR YK3 AE1\nH GE1 W8 2,3,4.5\nC BRB W8 2,1,4.5\nR GE1 BRB\nR BRB MIDU\nR BRB UAv\nE elbA YK3 GE1 rest=28\nE elbB AE1 GE1 rest=76\nF AE1 0.01,0,0 elbow\nF GE1 -0.01,0,0 elbowr\n! mast on the forearm, carrying the two guides of the wrist-pitch actuator\nC MB W8 1,1,6.5\nC MA B7 2,1,7.5 y x-z\nC MAv B7 2,1,7.5 z y\nC MD B7 1,1,7.5 y -z\nC MDv B7 1,1,7.5 z y\nR FH MB\nR FH MA\nR MB MA\nR MB MD\nR MA MD\n! AXIS 4 wrist pitch: axle cantilevered off the forearm elbow node, wrist link is a triangle at y=0\nC WCAP D1 5,-1,6.5 x y\nR FKv WCAP\nH WH W8 5,0,6.5\nP 5,-0.2,6.5 silver\nP 5,0.2,6.5 silver\nC WT B7 6,0,7.5 y -x-z\nC WTv B7 6,0,7.5 z y\nC WA W8 7,0,6.5\nR WH WT\nR WT WA\nR WH WA\nC W4CC D1 6,2,7.5 x -y\nR WTv W4CC\nH W4C W8 6,1,7.5\nP 6,0.8,7.5 silver\nP 6,1.2,7.5 silver\nH W4A W8 4,1,7.5\nP 4,0.8,7.5 silver\nP 4,1.2,7.5 silver\nR W4A W4C\nC YK4 R3 4,2,7.5 z -x\nC PC4 D1 4,0,7.5 x y\nR YK4 PC4\nC AE4 D1 0,2,7.5 y x\nR YK4 AE4\nH GW1 W8 2,2,7.5\nH GW2 W8 1,2,7.5\nR GW1 MAv\nR GW2 MDv\nE wriA1 YK4 GW1 rest=15 k=0.035\nE wriA2 YK4 GW1 rest=15 k=0.035\nE wriB AE4 GW1 rest=73 k=0.07\nF AE4 0.01,0,0 wrist\nF GW1 -0.01,0,0 wristr\n! AXIS 5 wrist roll: the hand rides a hub on a shaft along the arm's own axis\nC RCAP R3 9,0,6.5 y -z\nR WA RCAP\nH RH W8 8,0,6.5\nP 7.8,0,6.5 silver\nP 8.2,0,6.5 silver\nC HU W8 8,0,7.5 x -z\nC HL B7 8,0,5.5 x y+z\nC HLv B7 8,0,5.5 z -x\nC HR W8 8,1,6.5\nC HB B7 8,-1,6.5 x y-z\nC HBv B7 8,-1,6.5 z x\nR RH HU\nR RH HL\nR RH HR\nR RH HB\nR HU HR\nR HR HL\nR HL HB\nR HB HU\n! roll crank: a pin along the arm axis, 1U below it, and a coupler across in y\nC R5CC D1 6,0,5.5 y x\nR HLv R5CC\nH R5C W8 7,0,5.5\nP 6.8,0,5.5 silver\nP 7.2,0,5.5 silver\nH R5A W8 7,2,5.5\nP 6.8,2,5.5 silver\nP 7.2,2,5.5 silver\nR R5C R5A\nC YK5 R3 5,2,5.5 z -y\nC PC5 D1 9,2,5.5 y -x\nR YK5 PC5\nC AE5 D1 5,-2,5.5 x y\nR YK5 AE5\nH GR1 W8 5,0,5.5\nR GR1 WH\nE rolA YK5 GR1 rest=55\nE rolB AE5 GR1 rest=55\nF AE5 0,0.01,0 roll\nF GR1 0,-0.01,0 rollr\n! AXIS 6 gripper: one jaw pivoting on an axle through the top of the hand, closing past a fixed anvil\nC JAC D1 8,2,7.5 x -y\nR HU JAC\nH JH W8 8,1,7.5\nP 8,0.8,7.5 silver\nP 8,1.2,7.5 silver\nC JT B7 10,1,7.5 y -x\nC JTv B7 10,1,7.5 z -y\nC JD R3 10,1,5.5 y -x+z\nR JH JT\nR JT JD\nR JH JD\nC JF W8 10,0,5.5\nR HLv JF\n! gripper crank pin on the jaw, coupler up to the slider\nC G6CC D1 10,-1,7.5 x y\nR JTv G6CC\nH G6C W8 10,0,7.5\nP 10,-0.2,7.5 silver\nP 10,0.2,7.5 silver\nH G6A W8 11,0,8.5\nP 11,-0.2,8.5 silver\nP 11,0.2,8.5 silver\nR G6C G6A\nC YK6 R3 11,-1,8.5 x -z\nC PC6 D1 11,1,8.5 x -y\nR YK6 PC6\nC AE6 D1 11,-1,4.5 x z\nR YK6 AE6\nH GG1 W8 11,-1,6.5\nC GB0 W8 9,-1,6.5\nR GG1 GB0\nR GB0 HBv\nE griA YK6 GG1 rest=55\nE griB AE6 GG1 rest=55\nF AE6 0,0,0.01 grip\nF GG1 0,0,-0.01 gripr\n"};</script>
 <script>
 /* three.js scene: connectors, rods, joints, props. Coordinates: model mm, z up -> three y up. */
 var scene = new THREE.Scene(), canvas = document.getElementById("c");
@@ -2006,7 +2062,13 @@ function label(text, pos) {
   var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true }));
   sp.scale.set(44, 11, 1); sp.position.copy(pos).add(new THREE.Vector3(0, 14, 0)); return sp;
 }
-var BODYG = [], BEAMMESH = {};
+var BODYG = [], BEAMMESH = {}, BANDS = [];
+function bandGeo(pts, r) {                       // a tube along the band's route; 2+ points, no duplicates
+  var clean = pts.filter(function (p, i) { return i === 0 || p.distanceTo(pts[i - 1]) > 1e-4; });
+  if (clean.length < 2) clean = [pts[0], pts[0].clone().add(new THREE.Vector3(0, 0.01, 0))];
+  var curve = clean.length > 2 ? new THREE.CatmullRomCurve3(clean) : new THREE.LineCurve3(clean[0], clean[1]);
+  return new THREE.TubeGeometry(curve, Math.max(2, clean.length * 6), r, 7, false);
+}
 var MODEL = null;
 function bodyGroup(i) {                          // one group per rigid body, so the physics can move them
   if (BODYG[i]) return BODYG[i];
@@ -2020,7 +2082,7 @@ function place(mesh, bodyId) {                   // add a world-space mesh into 
   mesh.position.sub(g.userData.rest); g.add(mesh); return mesh;
 }
 function rebuild(solved, refit) {
-  MODEL = solved; window.MODEL = solved; while (world.children.length) world.remove(world.children[0]); PARTS = []; labelSprites = []; BODYG = []; BEAMMESH = {};
+  MODEL = solved; window.MODEL = solved; while (world.children.length) world.remove(world.children[0]); PARTS = []; labelSprites = []; BODYG = []; BEAMMESH = {}; BANDS = [];
   var D = KNEX.DIMS;
   solved.conns.forEach(function (K) {
     var hex = KNEX.RGB[KNEX.KINDS[K.kind].color], g = new THREE.Mesh(connGeo(K.kind), mat(hex));
@@ -2050,7 +2112,7 @@ function rebuild(solved, refit) {
       m.position.copy(a).lerp(b, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
     }
     m.userData = { type: "rod", ref: R, step: R.step, body: R.body };
-    if (R.beam) { world.add(m); BEAMMESH[R.id] = { mesh: m, rod: R, hex: hex }; }   // deforms: lives in world space
+    if (R.beam) { m.userData.beamMesh = true; world.add(m); BEAMMESH[R.id] = { mesh: m, rod: R, hex: hex }; }   // deforms: lives in world space
     else place(m, R.body);
     PARTS.push(m);
   });
@@ -2070,6 +2132,26 @@ function rebuild(solved, refit) {
     m.userData.body = pid ? pid.id : null; place(m, m.userData.body); PARTS.push(m);
   });
   labelSprites.forEach(function (s) { s.userData = { type: "label" }; world.add(s); });
+  /* Rubber bands and strings. They are force elements, not parts, so they were simulated but never
+     drawn: a rig held together by seventeen bands looked like it was held by nothing. Each one is a
+     polyline through its route, rebuilt every frame in bandsApply because its ends move. */
+  BANDS = [];
+  (MODEL.tendons || []).forEach(function (T) {
+    var pts = T.pts.map(function (p) { return toThree(p.pos); });
+    /* A tube, not a THREE.Line: a one-pixel line disappears inside a model this dense, and a rubber
+       band should read as a band. Seventeen short tubes rebuild per frame without trouble. */
+    var r = T.kind === "band" ? 2.6 : 1.3;
+    /* Lit like a part it disappears into the model, so a band is drawn flat: it is a force element,
+       and reading it at a glance matters more than making it look like moulded plastic. */
+    var line = new THREE.Mesh(bandGeo(pts, r),
+      new THREE.MeshBasicMaterial({ color: T.kind === "band" ? 0xFF6A1F : 0xF2F2F0 }));
+    line.userData = { type: "band", label: T.name, kind: T.kind, step: T.step, ref: T, radius: r };
+    world.add(line); PARTS.push(line);
+    BANDS.push({ line: line, T: T, nodes: T.pts.map(function (p) {
+      var K = p.conn ? MODEL.conns.filter(function (c) { return c.name === p.conn; })[0] : null;
+      return { body: K ? K.body : null, pos: p.pos };                 // which body carries this end
+    }) });
+  });
   (MODEL.loads || []).forEach(function (L) {                    // a cone where each external force acts
     var K = MODEL.conns.filter(function (c) { return c.name === L.at; })[0]; if (!K) return;
     var m = new THREE.Mesh(new THREE.ConeGeometry(6, 18, 10), new THREE.MeshBasicMaterial({ color: 0xE8531A }));
@@ -2150,13 +2232,27 @@ function stressApply() {
     mesh.mesh.material = new THREE.MeshStandardMaterial({ color: heat(u), roughness: 0.5 });
     mesh.util = u;
   });
+  /* Joints and, on a rigid model, the parts themselves. A triangulated frame welds into one body, so
+     its rods are not force elements and have no force of their own to show: what IS known is the load
+     in the bearings on that body's edge. Colouring the parts by it means a rigid build shows
+     something true rather than nothing at all. Per-member forces inside a welded group need the
+     finite-element pass; until then this is the honest approximation, and the legend says so. */
+  var byBody = {};
+  PHYS.W.joints.forEach(function (j) {
+    var u = j.load / D.socketPull;
+    byBody[j.A.id] = Math.max(byBody[j.A.id] || 0, u);
+    byBody[j.B.id] = Math.max(byBody[j.B.id] || 0, u);
+  });
   world.traverse(function (o) {
-    if (!o.userData || o.userData.type !== "joint") return;
-    if (!STRESS.on) { if (o.userData.m0) o.material = o.userData.m0; return; }
-    var body = o.userData.body, best = 0;
-    PHYS.W.joints.forEach(function (j) { if (j.A.id === body || j.B.id === body) best = Math.max(best, j.load / D.socketPull); });
+    if (!o.userData || !o.isMesh) return;
+    var t = o.userData.type;
+    if (t !== "joint" && t !== "conn" && t !== "rod" && t !== "spacer") return;
+    if (o.userData.beamMesh) return;                        // compliant rods are coloured above
+    if (!STRESS.on) { if (o.userData.m0) { o.material = o.userData.m0; o.userData.m0 = null; } return; }
+    var u = byBody[o.userData.body] || 0;
     if (!o.userData.m0) o.userData.m0 = o.material;
-    o.material = new THREE.MeshBasicMaterial({ color: heat(best) });
+    o.material = t === "joint" ? new THREE.MeshBasicMaterial({ color: heat(u) })
+                               : new THREE.MeshStandardMaterial({ color: heat(u), roughness: 0.5 });
   });
 }
 </script>
@@ -2222,6 +2318,7 @@ function physApply() {                                   // body transforms -> t
     g.quaternion.set(b.q[0], b.q[2], -b.q[1], b.q[3]);
   });
   if (window.beamsApply) beamsApply();
+  if (window.bandsApply) bandsApply();
   if (window.stressApply && STRESS.on) stressApply();
   } catch (e) { console.warn("physApply skipped:", e.message); }
 }
@@ -2296,6 +2393,29 @@ function beamsApply() {
   });
   } catch (e) { console.warn("beam reshape skipped:", e.message); }
 }
+/* Bands follow the bodies they are tied to, and go red as they stretch. A slack band is dim: that is
+   the difference between a spring that is doing something and one that is just lying there. */
+function bandsApply() {
+  if (!BANDS || !BANDS.length) return;
+  try {
+    BANDS.forEach(function (B) {
+      var pts = B.nodes.map(function (n) {
+        var p = toThree(n.pos);
+        var g = n.body != null && BODYG[n.body] ? BODYG[n.body] : null;
+        return g ? g.localToWorld(p.sub(g.userData.rest)) : p;
+      });
+      B.pts = pts;
+      B.line.geometry.dispose();
+      B.line.geometry = bandGeo(pts, B.line.userData.radius || 2);
+      var live = PHYS.W && (PHYS.W.tendons || []).filter(function (t) { return t.name === B.T.name; })[0];
+      if (!live) return;
+      var stretch = live.rest > 0 ? Math.max(0, (live.len - live.rest) / live.rest) : 0;
+      B.line.material.color = B.T.kind === "band"
+        ? new THREE.Color(0.55 + Math.min(0.45, stretch), 0.30 - Math.min(0.28, stretch * 0.7), 0.10)
+        : new THREE.Color(0.95, 0.95, 0.94);
+    });
+  } catch (e) { console.warn("band update skipped:", e.message); }
+}
 </script>
 <script>
 /* Panels, editor, live document. The shared build lives in db doc builds/current {knx, name, updated}. */
@@ -2355,6 +2475,23 @@ $("knx").addEventListener("keydown", function (e) { if ((e.metaKey || e.ctrlKey)
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 applyTheme();
+/* Demo picker: every build in builds/ is embedded, so switching is instant and needs no server. */
+(function () {
+  var sel = $("demoPick"); if (!sel || typeof DEMOS !== "object") return;
+  var names = Object.keys(DEMOS).sort();
+  if (!names.length) { sel.style.display = "none"; return; }
+  names.forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); });
+  var here = names.filter(function (n) { return DEMOS[n] === EMBEDDED_KNX; })[0];
+  if (here) sel.value = here;
+  sel.addEventListener("change", function () {
+    var src = DEMOS[sel.value]; if (src == null) return;
+    if (window.PHYS && PHYS.running) { PHYS.running = false; var rb = $("physRun"); if (rb) rb.textContent = "Run"; }
+    if (window.PHYS) PHYS.W = null;
+    var box = $("knx"); if (box) box.value = src;
+    render(src, "demo");
+    if (window.toast) toast("loaded " + sel.value);
+  });
+})();
 try { render(EMBEDDED_KNX, "embedded"); }
 catch (err) {                                        // never let a model problem freeze the bench
   console.error(err);
@@ -2533,7 +2670,8 @@ function liveAdd(d, t) {
    touches the network, and only after you switch it on. OpenCV alone does not give finger landmarks.
    A pinch grabs the part under your hand; moving pulls it; rolling your wrist twists it. */
 var HANDS = { on: false, ready: false, hands: null, video: null, lm: [null, null], pinch: [false, false],
-              roll: [0, 0], base: [0, 0], score: [0, 0], push: [0, 0], err: null };
+              roll: [0, 0], base: [0, 0], score: [0, 0], push: [0, 0], err: null,
+              wasPinch: [false, false], latched: [false, false] };
 var PALM = [];                                           // open-palm pushes, rebuilt every frame
 var MP_SRC = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
 var MP_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
@@ -2617,7 +2755,14 @@ function handsResults(r) {
       var d = roll - HANDS.base[idx];
       while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
       g.twist = d;
-    } else if (!pinch && g) { grabRelease(side); }
+    } else if (!pinch && g) {
+      /* Latched: a pinch holds until you pinch again. Levers are the reason. Pulling one through its
+         travel takes longer than a hand can comfortably stay closed in front of a webcam, and losing
+         the grip halfway means starting over. */
+      if (!(document.getElementById("handsLock") || {}).checked) grabRelease(side);
+      else if (HANDS.wasPinch[idx]) HANDS.latched[idx] = true;
+    }
+    if (HANDS.latched[idx] && pinch && !HANDS.wasPinch[idx]) { grabRelease(side); HANDS.latched[idx] = false; }
     if (!pinch) {                                          // an open palm pushes whatever is under it
       var hit2 = pickBodyAt(cx, cy);
       if (hit2 && hit2.body && !hit2.body.fixed) {
@@ -2632,8 +2777,32 @@ function handsResults(r) {
     } else HANDS.push[idx] = 0;
     HANDS.pinch[idx] = pinch;
   });
-  ["left", "right"].forEach(function (s, i) { if (!seen[s]) { HANDS.lm[i] = null; HANDS.pinch[i] = false; HANDS.push[i] = 0; grabRelease(s); } });
+  ["left", "right"].forEach(function (s, i) {
+    if (!seen[s]) {
+      HANDS.lm[i] = null; HANDS.pinch[i] = false; HANDS.push[i] = 0;
+      if (!HANDS.latched[i]) grabRelease(s);               // a latched grip survives the hand leaving frame
+    }
+    HANDS.wasPinch[i] = HANDS.pinch[i];
+  });
+  handsStatus();
   handsDraw();
+}
+/* What the tracker currently believes, per hand. Without it a webcam preview is just a picture of you:
+   you cannot tell whether a pinch registered, what it caught, or why nothing is moving. */
+function handsStatus() {
+  var el = document.getElementById("handsStat"); if (!el) return;
+  var out = [];
+  ["left", "right"].forEach(function (s, i) {
+    if (!HANDS.lm[i]) return;
+    var g = (window.GRABS || []).filter(function (x) { return x.source === s; })[0];
+    var what = g ? (HANDS.latched[i] ? "latched" : "holding") + " body " + g.body.id
+                 : HANDS.push[i] > 0.2 ? "pushing " + HANDS.push[i].toFixed(1) + " N"
+                 : HANDS.pinch[i] ? "pinching, nothing under it" : "open";
+    var tw = g && g.twist ? ", twist " + (g.twist * 180 / Math.PI).toFixed(0) + "°" : "";
+    out.push(s + ": " + what + tw);
+  });
+  el.textContent = out.length ? out.join("\n") : "looking for a hand…";
+  el.style.whiteSpace = "pre";
 }
 function handsDraw() {
   var c = document.getElementById("handsCanvas"); if (!c) return;

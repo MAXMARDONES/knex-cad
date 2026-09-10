@@ -19,6 +19,7 @@ function physApply() {                                   // body transforms -> t
     g.quaternion.set(b.q[0], b.q[2], -b.q[1], b.q[3]);
   });
   if (window.beamsApply) beamsApply();
+  if (window.bandsApply) bandsApply();
   if (window.stressApply && STRESS.on) stressApply();
   } catch (e) { console.warn("physApply skipped:", e.message); }
 }
@@ -92,5 +93,28 @@ function beamsApply() {
     sh.rod.mesh.geometry.dispose(); sh.rod.mesh.geometry = g;
   });
   } catch (e) { console.warn("beam reshape skipped:", e.message); }
+}
+/* Bands follow the bodies they are tied to, and go red as they stretch. A slack band is dim: that is
+   the difference between a spring that is doing something and one that is just lying there. */
+function bandsApply() {
+  if (!BANDS || !BANDS.length) return;
+  try {
+    BANDS.forEach(function (B) {
+      var pts = B.nodes.map(function (n) {
+        var p = toThree(n.pos);
+        var g = n.body != null && BODYG[n.body] ? BODYG[n.body] : null;
+        return g ? g.localToWorld(p.sub(g.userData.rest)) : p;
+      });
+      B.pts = pts;
+      B.line.geometry.dispose();
+      B.line.geometry = bandGeo(pts, B.line.userData.radius || 2);
+      var live = PHYS.W && (PHYS.W.tendons || []).filter(function (t) { return t.name === B.T.name; })[0];
+      if (!live) return;
+      var stretch = live.rest > 0 ? Math.max(0, (live.len - live.rest) / live.rest) : 0;
+      B.line.material.color = B.T.kind === "band"
+        ? new THREE.Color(0.55 + Math.min(0.45, stretch), 0.30 - Math.min(0.28, stretch * 0.7), 0.10)
+        : new THREE.Color(0.95, 0.95, 0.94);
+    });
+  } catch (e) { console.warn("band update skipped:", e.message); }
 }
 </script>

@@ -1,5 +1,6 @@
 <header>
   <h1 id="title">K'NEX Rig Bench</h1>
+  <select id="demoPick" class="act" title="load another build"></select>
   <span class="sub"><span class="live" id="live"></span><span id="livetxt">local build</span></span>
   <span class="pill" id="pcount">0 parts</span>
   <span class="pill ok" id="pissues">0 issues</span>
@@ -14,6 +15,13 @@
     <div id="handsPanel">
       <video id="handsVideo" playsinline muted></video>
       <canvas id="handsCanvas" width="200" height="150"></canvas>
+      <div class="cap">
+        <div id="handsStat">looking for a hand&hellip;</div>
+        <label style="display:flex;gap:5px;align-items:center;margin-top:4px">
+          <input type="checkbox" id="handsLock"> latch the grip
+        </label>
+        <div style="margin-top:3px;opacity:.75">pinch to grab &middot; roll your wrist to twist &middot; open palm pushes</div>
+      </div>
       <div class="cap">pinch to grab · move to pull · roll to twist · open palm to push</div>
     </div>
     <div id="legend">
@@ -112,4 +120,7 @@
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>/*__ENGINE__*/</script>
-<script>var EMBEDDED_KNX = /*__BUILD__*/"";</script>
+<script>var EMBEDDED_KNX = /*__BUILD__*/"";
+/* Every build in builds/ travels with the page, so the demo picker works from a file:// URL with no
+   server. The one passed to build_viewer.sh is the one that opens. */
+var DEMOS = /*__DEMOS__*/{};</script>

@@ -21,13 +21,27 @@ function stressApply() {
     mesh.mesh.material = new THREE.MeshStandardMaterial({ color: heat(u), roughness: 0.5 });
     mesh.util = u;
   });
+  /* Joints and, on a rigid model, the parts themselves. A triangulated frame welds into one body, so
+     its rods are not force elements and have no force of their own to show: what IS known is the load
+     in the bearings on that body's edge. Colouring the parts by it means a rigid build shows
+     something true rather than nothing at all. Per-member forces inside a welded group need the
+     finite-element pass; until then this is the honest approximation, and the legend says so. */
+  var byBody = {};
+  PHYS.W.joints.forEach(function (j) {
+    var u = j.load / D.socketPull;
+    byBody[j.A.id] = Math.max(byBody[j.A.id] || 0, u);
+    byBody[j.B.id] = Math.max(byBody[j.B.id] || 0, u);
+  });
   world.traverse(function (o) {
-    if (!o.userData || o.userData.type !== "joint") return;
-    if (!STRESS.on) { if (o.userData.m0) o.material = o.userData.m0; return; }
-    var body = o.userData.body, best = 0;
-    PHYS.W.joints.forEach(function (j) { if (j.A.id === body || j.B.id === body) best = Math.max(best, j.load / D.socketPull); });
+    if (!o.userData || !o.isMesh) return;
+    var t = o.userData.type;
+    if (t !== "joint" && t !== "conn" && t !== "rod" && t !== "spacer") return;
+    if (o.userData.beamMesh) return;                        // compliant rods are coloured above
+    if (!STRESS.on) { if (o.userData.m0) { o.material = o.userData.m0; o.userData.m0 = null; } return; }
+    var u = byBody[o.userData.body] || 0;
     if (!o.userData.m0) o.userData.m0 = o.material;
-    o.material = new THREE.MeshBasicMaterial({ color: heat(best) });
+    o.material = t === "joint" ? new THREE.MeshBasicMaterial({ color: heat(u) })
+                               : new THREE.MeshStandardMaterial({ color: heat(u), roughness: 0.5 });
   });
 }
 </script>

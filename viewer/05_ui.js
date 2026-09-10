@@ -56,6 +56,23 @@ $("knx").addEventListener("keydown", function (e) { if ((e.metaKey || e.ctrlKey)
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 applyTheme();
+/* Demo picker: every build in builds/ is embedded, so switching is instant and needs no server. */
+(function () {
+  var sel = $("demoPick"); if (!sel || typeof DEMOS !== "object") return;
+  var names = Object.keys(DEMOS).sort();
+  if (!names.length) { sel.style.display = "none"; return; }
+  names.forEach(function (n) { var o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); });
+  var here = names.filter(function (n) { return DEMOS[n] === EMBEDDED_KNX; })[0];
+  if (here) sel.value = here;
+  sel.addEventListener("change", function () {
+    var src = DEMOS[sel.value]; if (src == null) return;
+    if (window.PHYS && PHYS.running) { PHYS.running = false; var rb = $("physRun"); if (rb) rb.textContent = "Run"; }
+    if (window.PHYS) PHYS.W = null;
+    var box = $("knx"); if (box) box.value = src;
+    render(src, "demo");
+    if (window.toast) toast("loaded " + sel.value);
+  });
+})();
 try { render(EMBEDDED_KNX, "embedded"); }
 catch (err) {                                        // never let a model problem freeze the bench
   console.error(err);

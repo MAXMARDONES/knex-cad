@@ -1,0 +1,337 @@
+T Six-axis K'NEX robot arm, all axes driven by mechanical linear actuators
+# U = 37.5 mm, z up, desk at z = 0. Every axis is the same mechanism: a rod that slides through two
+# guide hubs (the linear actuator), a yoke at its end carrying a pin, a coupler link with a hub at
+# each end, and a crank pin on the link being driven. Two opposed rubber bands centre each slider so
+# the arm holds a pose with no input; the F lines are the push/pull input and are declared at 0.01 N
+# so that pressing one with a gain of 300 is a 3 N push and the settle stays neutral.
+! base deck: a 4U square with a rear extension for ballast. The outer nodes are 3D pairs, because a
+! horizontal deck rod and a vertical leg are never coplanar.
+C P1 B7 2,2,1.5 z -x
+C P1v B7 2,2,1.5 x -z
+C P2 B7 2,-2,1.5 z y
+C P2v B7 2,-2,1.5 x -z
+C P3 W8 -2,-2,1.5
+C P4 W8 -2,2,1.5
+C P5 W8 -2,0,1.5
+C GB3 W8 -3,-2,1.5
+C R1 B7 -4,-2,1.5 z x
+C R1v B7 -4,-2,1.5 x -z
+C R2 B7 -4,2,1.5 z -y
+C R2v B7 -4,2,1.5 x -z
+C R3 W8 -4,0,1.5
+R P1 P2
+R P2 P3
+R P4 P1
+R P3 P5
+R P5 P4
+R P3 GB3
+R GB3 R1
+R P5 R3
+R P4 R2
+R R1 R3
+R R3 R2
+R R1 P5
+R P5 R2
+! the centre node is a 3D pair too: the deck rods lie in its plane, the yaw axle stands on its partner
+C BC B7 0,0,1.5 z x+y
+C BCV B7 0,0,1.5 y z
+R BC P1
+R BC P2
+R BC P3
+R BC P4
+R BC P5
+! feet: the only parts that touch the desk
+C FT1 W8 2,2,0.5 x y
+C FT2 W8 2,-2,0.5 x y
+C FT5 W8 -4,-2,0.5 x y
+C FT6 W8 -4,2,0.5 x y
+R FT1 P1v
+R FT2 P2v
+R FT5 R1v
+R FT6 R2v
+! ballast at the back, so the reach of the arm does not tip it
+W ballastL R1 mass=400
+W ballastR R2 mass=400
+! AXIS 1 bearing: a red rod standing on the centre pair, capped at the top
+R BCV 0,0,5.5 red
+C YCAP D1 0,0,5.5 y -z
+! the column: a braced box riding two hubs on that axle. The spacers under the lower hub turn the
+! bearing into a thrust bearing so the column cannot slide down the axle.
+H Y1 W8 0,0,2.5
+H Y2 W8 0,0,4.5
+P 0,0,2.3 silver
+P 0,0,2.7 silver
+C CA B7 1,1,2.5 z -x
+C CAv B7 1,1,2.5 x z
+C CB B7 1,-1,2.5 z y
+C CBv B7 1,-1,2.5 -y z
+C CC B7 -1,-1,2.5 z x
+C CCv B7 -1,-1,2.5 -x z
+C CD B7 -1,1,2.5 z -y
+C CDv B7 -1,1,2.5 y z
+R Y1 CA
+R Y1 CB
+R Y1 CC
+R Y1 CD
+R CA CB
+R CB CC
+R CC CD
+R CD CA
+C CA2 B7 1,1,4.5 z -x
+C CA2v B7 1,1,4.5 y -z
+C CB2 B7 1,-1,4.5 z y
+C CB2v B7 1,-1,4.5 x -z
+C CC2 B7 -1,-1,4.5 z x-y
+C CC2v B7 -1,-1,4.5 -y -z
+C CD2 B7 -1,1,4.5 z -y
+C CD2v B7 -1,1,4.5 -x -z
+R Y2 CA2
+R Y2 CB2
+R Y2 CC2
+R Y2 CD2
+R CA2 CB2
+R CB2 CC2
+R CC2 CD2
+R CD2 CA2
+! four uprights and four face diagonals, one starting and one landing at every corner
+R CAv CA2v
+R CBv CB2v
+R CCv CC2v
+R CDv CD2v
+R CAv CB2v
+R CBv CC2v
+R CCv CD2v
+R CDv CA2v
+! AXIS 1 crank: a triangulated arm off the column top reaching 2U behind the axle, with a pin
+! hanging from its tip. The coupler runs parallel to the slide, which is where the torque comes from.
+C CK2 B7 0,-2,4.5 z x
+C CK2v B7 0,-2,4.5 x -z
+R CB2 CK2
+R CC2 CK2
+C CKC D1 0,-2,3.5 x z
+R CK2v CKC
+H CY2 W8 0,-2,4
+P 0,-2,3.8 silver
+P 0,-2,4.2 silver
+! AXIS 1 actuator: a red rod sliding along x at y=-2, z=2.5, with its yoke pin standing up to z=4.5
+H CY1 W8 -2,-2,4
+P -2,-2,3.8 silver
+P -2,-2,4.2 silver
+R CY1 CY2
+C YK1 R3 -2,-2,2.5 y -x
+C PC1 D1 -2,-2,4.5 x -z
+R YK1 PC1
+C AC1 D1 -6,-2,2.5 y x
+R YK1 AC1
+H GH1 W8 -3,-2,2.5
+H GH2 W8 -4,-2,2.5
+R GH1 GB3
+R GH2 R1v
+! opposed centring bands
+E yawA1 AC1 R1 rest=68 k=0.08
+E yawA2 AC1 R1 rest=68 k=0.08
+E yawB1 YK1 GB3 rest=30 k=0.08
+E yawB2 YK1 GB3 rest=30 k=0.08
+F AC1 0.01,0,0 yaw
+F GH1 -0.01,0,0 yawr
+! AXIS 2 shoulder: a hub on the front rail of the column top. The upper arm is a flat triangle in the
+! plane y=0; the crank is the arm itself, with the pin 2U out from the bearing.
+H SH W8 1,0,4.5
+P 1,-0.2,4.5 silver
+P 1,0.2,4.5 silver
+C MIDU W8 2,0,4.5
+C UA B7 3,0,4.5 y -x
+C UAv B7 3,0,4.5 z -y
+C EL B7 3,0,6.5 y -z
+C ELv B7 3,0,6.5 z y
+R SH MIDU
+R MIDU UA
+R UA EL
+R SH EL
+! crank pin on the upper arm, coupler down and back to the slider
+C SCC D1 3,-2,4.5 x y
+R UAv SCC
+H SCP W8 3,-1,4.5
+P 3,-0.8,4.5 silver
+P 3,-1.2,4.5 silver
+H SAP W8 1,-1,6.5
+P 1,-0.8,6.5 silver
+P 1,-1.2,6.5 silver
+R SCP SAP
+! AXIS 2 actuator: a red rod sliding vertically at x=1, y=-2, guided by a hub braced into the
+! horizontal triangle of the column top
+C YK2 R3 1,-2,6.5 x -z
+C PC2 D1 1,0,6.5 x -y
+R YK2 PC2
+C AS1 D1 1,-2,2.5 x z
+R YK2 AS1
+H GS1 W8 1,-2,4.5
+R GS1 CB2
+R GS1 CK2
+E shoA YK2 CB2 rest=82 k=0.12
+E shoB1 AS1 CB2 rest=35 k=0.055
+E shoB2 AS1 CB2 rest=35 k=0.055
+E shoB3 AS1 CB2 rest=35 k=0.055
+F AS1 0,0,0.01 shoulder
+F GS1 0,0,-0.01 shoulderr
+! AXIS 3 elbow: axle cantilevered off the elbow node, forearm as an A-frame in the plane y=1
+C ECAP D1 3,2,6.5 x -y
+R ELv ECAP
+H FH W8 3,1,6.5
+P 3,0.8,6.5 silver
+P 3,1.2,6.5 silver
+C FK B7 5,1,6.5 y -x-z
+C FKv B7 5,1,6.5 z y
+C FB W8 4,1,5.5
+R FH FK
+R FH FB
+R FB FK
+! crank pin at the far end of the forearm, coupler back and down to the slider
+C ECC D1 5,3,6.5 x -y
+R FKv ECC
+H ECP W8 5,2,6.5
+P 5,1.8,6.5 silver
+P 5,2.2,6.5 silver
+H EAP W8 3,2,4.5
+P 3,1.8,4.5 silver
+P 3,2.2,4.5 silver
+R ECP EAP
+! AXIS 3 actuator: a red rod sliding along x at y=3, z=4.5, guided off a bracket on the upper arm
+C YK3 R3 3,3,4.5 z -x
+C PC3 D1 3,1,4.5 x y
+R YK3 PC3
+C AE1 D1 -1,3,4.5 y x
+R YK3 AE1
+H GE1 W8 2,3,4.5
+C BRB W8 2,1,4.5
+R GE1 BRB
+R BRB MIDU
+R BRB UAv
+E elbA YK3 GE1 rest=28
+E elbB AE1 GE1 rest=76
+F AE1 0.01,0,0 elbow
+F GE1 -0.01,0,0 elbowr
+! mast on the forearm, carrying the two guides of the wrist-pitch actuator
+C MB W8 1,1,6.5
+C MA B7 2,1,7.5 y x-z
+C MAv B7 2,1,7.5 z y
+C MD B7 1,1,7.5 y -z
+C MDv B7 1,1,7.5 z y
+R FH MB
+R FH MA
+R MB MA
+R MB MD
+R MA MD
+! AXIS 4 wrist pitch: axle cantilevered off the forearm elbow node, wrist link is a triangle at y=0
+C WCAP D1 5,-1,6.5 x y
+R FKv WCAP
+H WH W8 5,0,6.5
+P 5,-0.2,6.5 silver
+P 5,0.2,6.5 silver
+C WT B7 6,0,7.5 y -x-z
+C WTv B7 6,0,7.5 z y
+C WA W8 7,0,6.5
+R WH WT
+R WT WA
+R WH WA
+C W4CC D1 6,2,7.5 x -y
+R WTv W4CC
+H W4C W8 6,1,7.5
+P 6,0.8,7.5 silver
+P 6,1.2,7.5 silver
+H W4A W8 4,1,7.5
+P 4,0.8,7.5 silver
+P 4,1.2,7.5 silver
+R W4A W4C
+C YK4 R3 4,2,7.5 z -x
+C PC4 D1 4,0,7.5 x y
+R YK4 PC4
+C AE4 D1 0,2,7.5 y x
+R YK4 AE4
+H GW1 W8 2,2,7.5
+H GW2 W8 1,2,7.5
+R GW1 MAv
+R GW2 MDv
+E wriA1 YK4 GW1 rest=15 k=0.035
+E wriA2 YK4 GW1 rest=15 k=0.035
+E wriB AE4 GW1 rest=73 k=0.07
+F AE4 0.01,0,0 wrist
+F GW1 -0.01,0,0 wristr
+! AXIS 5 wrist roll: the hand rides a hub on a shaft along the arm's own axis
+C RCAP R3 9,0,6.5 y -z
+R WA RCAP
+H RH W8 8,0,6.5
+P 7.8,0,6.5 silver
+P 8.2,0,6.5 silver
+C HU W8 8,0,7.5 x -z
+C HL B7 8,0,5.5 x y+z
+C HLv B7 8,0,5.5 z -x
+C HR W8 8,1,6.5
+C HB B7 8,-1,6.5 x y-z
+C HBv B7 8,-1,6.5 z x
+R RH HU
+R RH HL
+R RH HR
+R RH HB
+R HU HR
+R HR HL
+R HL HB
+R HB HU
+! roll crank: a pin along the arm axis, 1U below it, and a coupler across in y
+C R5CC D1 6,0,5.5 y x
+R HLv R5CC
+H R5C W8 7,0,5.5
+P 6.8,0,5.5 silver
+P 7.2,0,5.5 silver
+H R5A W8 7,2,5.5
+P 6.8,2,5.5 silver
+P 7.2,2,5.5 silver
+R R5C R5A
+C YK5 R3 5,2,5.5 z -y
+C PC5 D1 9,2,5.5 y -x
+R YK5 PC5
+C AE5 D1 5,-2,5.5 x y
+R YK5 AE5
+H GR1 W8 5,0,5.5
+R GR1 WH
+E rolA YK5 GR1 rest=55
+E rolB AE5 GR1 rest=55
+F AE5 0,0.01,0 roll
+F GR1 0,-0.01,0 rollr
+! AXIS 6 gripper: one jaw pivoting on an axle through the top of the hand, closing past a fixed anvil
+C JAC D1 8,2,7.5 x -y
+R HU JAC
+H JH W8 8,1,7.5
+P 8,0.8,7.5 silver
+P 8,1.2,7.5 silver
+C JT B7 10,1,7.5 y -x
+C JTv B7 10,1,7.5 z -y
+C JD R3 10,1,5.5 y -x+z
+R JH JT
+R JT JD
+R JH JD
+C JF W8 10,0,5.5
+R HLv JF
+! gripper crank pin on the jaw, coupler up to the slider
+C G6CC D1 10,-1,7.5 x y
+R JTv G6CC
+H G6C W8 10,0,7.5
+P 10,-0.2,7.5 silver
+P 10,0.2,7.5 silver
+H G6A W8 11,0,8.5
+P 11,-0.2,8.5 silver
+P 11,0.2,8.5 silver
+R G6C G6A
+C YK6 R3 11,-1,8.5 x -z
+C PC6 D1 11,1,8.5 x -y
+R YK6 PC6
+C AE6 D1 11,-1,4.5 x z
+R YK6 AE6
+H GG1 W8 11,-1,6.5
+C GB0 W8 9,-1,6.5
+R GG1 GB0
+R GB0 HBv
+E griA YK6 GG1 rest=55
+E griB AE6 GG1 rest=55
+F AE6 0,0,0.01 grip
+F GG1 0,0,-0.01 gripr

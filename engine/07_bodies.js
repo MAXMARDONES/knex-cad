@@ -83,7 +83,15 @@ KNEX.bodies = function (s) {
   var bearings = [];
   s.conns.forEach(function (K) {
     K.joints.forEach(function (j) {
-      if (j.type !== "hole" || s.rods[j.rod].beam) return;
+      if (j.type !== "hole") return;
+      /* A compliant rod already ties its own two anchors together as a beam, so a hub that IS one of
+         those anchors must not be constrained twice. Any OTHER hub on it is a real bearing and used
+         to be dropped on the floor: under FLEX every rod is a beam, so every bearing in the model
+         disappeared and anything riding an axle simply fell off. */
+      if (s.rods[j.rod].beam) {
+        var sp = (s.springs || []).filter(function (x) { return x.rod === j.rod; })[0];
+        if (!sp || sp.a === K.name || sp.b === K.name) return;
+      }
       var A = parts[idx.get(K)].body, B = parts[idx.get(s.rods[j.rod])].body;
       if (A === B) return;
       bearings.push({ conn: K.name, rod: j.rod, a: A, b: B, axis: s.rods[j.rod].u || V.unit(V.sub(s.rods[j.rod].p1, s.rods[j.rod].p0)), at: K.pos });

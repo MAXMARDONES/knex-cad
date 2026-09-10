@@ -110,8 +110,14 @@ KNEX.solve = function (m) {
         if (rod.beam) {                      // a bending rod leaves its socket straight and curves after: allow the angle
           var lim = rod.flexi ? 60 : 25;      // a stiff rod can only be persuaded so far before the socket lets go
           for (var kf = 0; kf < 8; kf++) { var af = V.angleDeg(K.slotDir(kf), away); if (af < bestA && af < lim && slots.indexOf(kf) >= 0 && !K.used["s" + kf]) { bestA = af; bestK = kf; } }
-          if (bestK < 0) issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + ")");
-          else { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          /* No socket does not mean no joint. A rod ending at a connector's centre and lying along its
+             normal goes THROUGH the hub, and the other half of a 3D pair can hold one too. The rigid
+             path has always allowed both; the bending path used to demand a socket and called every
+             axle in the model an error, which is what made FLEX unusable on anything with a bearing. */
+          if (bestK >= 0) { j = { type: "end", slot: bestK, tangent: K.slotDir(bestK) }; K.used["s" + bestK] = rod.line; rod["tan" + atEnd] = j.tangent; }
+          else if (along) { j = { type: "hole", t: atEnd }; }
+          else if (K.pair && Math.abs(V.dot(away, out.byName[K.pair].n)) < 0.08) { /* its 3D partner holds it */ }
+          else issue("error", K, K.name + ": no free socket within " + lim + " deg for the bending rod (line " + rod.line + "), and it does not run through the hub either");
         } else {
         for (var k = 0; k < 8; k++) { var a = V.angleDeg(K.slotDir(k), away); if (a < bestA) { bestA = a; bestK = k; } }
         if (bestA < D.tolAng) {

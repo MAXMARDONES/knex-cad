@@ -4,7 +4,8 @@
    touches the network, and only after you switch it on. OpenCV alone does not give finger landmarks.
    A pinch grabs the part under your hand; moving pulls it; rolling your wrist twists it. */
 var HANDS = { on: false, ready: false, hands: null, video: null, lm: [null, null], pinch: [false, false],
-              roll: [0, 0], base: [0, 0], score: [0, 0], push: [0, 0], err: null };
+              roll: [0, 0], base: [0, 0], score: [0, 0], push: [0, 0], err: null,
+              wasPinch: [false, false], latched: [false, false] };
 var PALM = [];                                           // open-palm pushes, rebuilt every frame
 var MP_SRC = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
 var MP_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
@@ -88,7 +89,14 @@ function handsResults(r) {
       var d = roll - HANDS.base[idx];
       while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
       g.twist = d;
-    } else if (!pinch && g) { grabRelease(side); }
+    } else if (!pinch && g) {
+      /* Latched: a pinch holds until you pinch again. Levers are the reason. Pulling one through its
+         travel takes longer than a hand can comfortably stay closed in front of a webcam, and losing
+         the grip halfway means starting over. */
+      if (!(document.getElementById("handsLock") || {}).checked) grabRelease(side);
+      else if (HANDS.wasPinch[idx]) HANDS.latched[idx] = true;
+    }
+    if (HANDS.latched[idx] && pinch && !HANDS.wasPinch[idx]) { grabRelease(side); HANDS.latched[idx] = false; }
     if (!pinch) {                                          // an open palm pushes whatever is under it
       var hit2 = pickBodyAt(cx, cy);
       if (hit2 && hit2.body && !hit2.body.fixed) {
@@ -103,8 +111,32 @@ function handsResults(r) {
     } else HANDS.push[idx] = 0;
     HANDS.pinch[idx] = pinch;
   });
-  ["left", "right"].forEach(function (s, i) { if (!seen[s]) { HANDS.lm[i] = null; HANDS.pinch[i] = false; HANDS.push[i] = 0; grabRelease(s); } });
+  ["left", "right"].forEach(function (s, i) {
+    if (!seen[s]) {
+      HANDS.lm[i] = null; HANDS.pinch[i] = false; HANDS.push[i] = 0;
+      if (!HANDS.latched[i]) grabRelease(s);               // a latched grip survives the hand leaving frame
+    }
+    HANDS.wasPinch[i] = HANDS.pinch[i];
+  });
+  handsStatus();
   handsDraw();
+}
+/* What the tracker currently believes, per hand. Without it a webcam preview is just a picture of you:
+   you cannot tell whether a pinch registered, what it caught, or why nothing is moving. */
+function handsStatus() {
+  var el = document.getElementById("handsStat"); if (!el) return;
+  var out = [];
+  ["left", "right"].forEach(function (s, i) {
+    if (!HANDS.lm[i]) return;
+    var g = (window.GRABS || []).filter(function (x) { return x.source === s; })[0];
+    var what = g ? (HANDS.latched[i] ? "latched" : "holding") + " body " + g.body.id
+                 : HANDS.push[i] > 0.2 ? "pushing " + HANDS.push[i].toFixed(1) + " N"
+                 : HANDS.pinch[i] ? "pinching, nothing under it" : "open";
+    var tw = g && g.twist ? ", twist " + (g.twist * 180 / Math.PI).toFixed(0) + "°" : "";
+    out.push(s + ": " + what + tw);
+  });
+  el.textContent = out.length ? out.join("\n") : "looking for a hand…";
+  el.style.whiteSpace = "pre";
 }
 function handsDraw() {
   var c = document.getElementById("handsCanvas"); if (!c) return;

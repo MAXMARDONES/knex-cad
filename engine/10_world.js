@@ -113,7 +113,12 @@ KNEX.phys.world = function (s, opts) {
         B.feat.push({ p: V.mul(p.c, MM), r: D.hubOD / 2 * MM, part: p });
         KNEX.KINDS[p.ref.kind].slots.forEach(function (k) {              // two samples along each arm
           var d = V.rot(p.ref.e1, p.axis, k * 45);
-          [13, 18].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
+          /* Spheres of radius 4 along each arm, placed so the OUTER one just reaches the rim at connR
+             and no further. They used to sit at 18 with radius 4, which made every connector 22 mm in
+             radius instead of 18.75: a connector at its natural resting height of 0.5 U then dug
+             3.25 mm into the desk, and the contact pushing it out fought whatever held it. That is
+             where the slider's phantom 145 N came from, and why FLEX looked unusable. */
+          [D.connR - 10, D.connR - 4].forEach(function (r) { B.feat.push({ p: V.add(V.mul(p.c, MM), V.mul(d, r * MM)), r: 4 * MM, part: p }); });
         });
       }
     });
