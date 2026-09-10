@@ -29,6 +29,7 @@ module.exports = function live(args) {
   }
   function compile() {
     try {
+      if (!fs.existsSync(build)) { send("log", { kind: "note", text: "waiting for " + path.basename(build) + " to be written" }); return null; }
       var text = fs.readFileSync(build, "utf8");
       var s = KNEX.build(text);
       var payload = KNEX.toJSON(s);
@@ -60,6 +61,7 @@ module.exports = function live(args) {
   var MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png",
                ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".json": "application/json", ".knx": "text/plain", ".md": "text/plain" };
   var srv = http.createServer(function (req, res) {
+    if (req.url.split("?")[0] === "/build" && req.method === "GET" && !fs.existsSync(build)) { res.writeHead(204); res.end(); return; }
     var u = req.url.split("?")[0];
     if (u === "/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "Access-Control-Allow-Origin": "*" });
