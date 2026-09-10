@@ -4,3 +4,4 @@ dist/current.json
 *.png.tmp
 .DS_Store
 docs/.viewer-build
+.claude/worktrees/
