@@ -1,0 +1,8 @@
+{
+  "name": "knex-cad",
+  "version": "1.0.0",
+  "description": "Design real, buildable classic K'NEX as compact text. Geometry checked against the sqrt(2) rod ladder and the socket planes, simulated with rigid-body physics (gravity, friction, bearings, bending rods, motors, gears, strings, rubber bands, breakage), and drawn as instruction sheets. Use whenever someone wants to build something out of K'NEX or find out whether a K'NEX mechanism will work.",
+  "author": { "name": "Max Mardones" },
+  "homepage": "https://github.com/MAXMARDONES/knex-cad",
+  "keywords": ["knex", "cad", "physics", "rigid-body", "simulation", "mechanism", "construction-toy", "generative-design"]
+}

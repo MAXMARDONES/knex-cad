@@ -51,7 +51,7 @@ applyTheme(); render(EMBEDDED_KNX, "embedded"); animate();
         function (e) { $("savemsg").textContent = "Could not save (" + e.code + ")"; });
     });
     ref.onSnapshot(function (snap) {
-      var d = snap.data(); $("live").className = "live on"; $("livetxt").textContent = snap.exists ? "live · " + (d.name || "shared build") : "live · waiting for first build";
+      var d = snap.data(); $("live").className = "live on"; $("livetxt").textContent = snap.exists ? "live · " + (d.name || "shared build") : "live · waiting for a build";
       if (snap.exists && typeof d.knx === "string" && d.knx !== CURRENT) { render(d.knx, "live"); $("updated").textContent = d.updated ? "updated " + new Date(d.updated).toLocaleTimeString() : ""; }
     }, function (e) { $("livetxt").textContent = "live feed stopped (" + e.code + ")"; $("live").className = "live"; });
   });

@@ -11,6 +11,12 @@ Read these before you design anything:
 4. **[docs/DSL.md](docs/DSL.md)** — the full `.knx` grammar.
 5. **[skill/SKILL.md](skill/SKILL.md)** — the same guidance packaged as a Claude Code skill.
 
+## Prerequisites
+
+Node 18 or newer and bash. Nothing else is required and there are no npm packages. `python3` with
+`cairosvg` is optional and only converts the SVG drawings to PNG. Run `./scripts/install.sh` once: it
+checks what is present, builds `dist/knex.js`, verifies the example model and writes the viewer.
+
 ## The two rules that prevent most errors
 
 - **Rod lengths come only from the ladder:** 37.5, 53.03, 75, 106.07, 150, 212.13 mm. A span of 3 U does
@@ -31,6 +37,7 @@ level. None of those are visible in the geometry check.
 ## Layout
 
 ```
+.claude-plugin/  plugin + marketplace manifests; commands/ and skills/ ship with them
 engine/     the engine, numbered by load order, concatenated into dist/knex.js by ./build.sh
   01-06     catalogue, vectors, parser, solver, checker, entry point
   07        mass properties and the rigid-body partition

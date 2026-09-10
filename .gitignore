@@ -1,6 +1,5 @@
 node_modules/
 dist/knex.js
 dist/current.json
-docs/viewer.html
 *.png.tmp
 .DS_Store

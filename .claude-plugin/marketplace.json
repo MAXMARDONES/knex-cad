@@ -1,0 +1,21 @@
+{
+  "name": "knex-cad",
+  "owner": { "name": "Max Mardones" },
+  "metadata": {
+    "description": "CAD, a geometry checker and a rigid-body physics engine for classic K'NEX",
+    "version": "1.0.0",
+    "homepage": "https://github.com/MAXMARDONES/knex-cad"
+  },
+  "plugins": [
+    {
+      "name": "knex-cad",
+      "source": "./",
+      "description": "Design real, buildable classic K'NEX as compact text: checked against the rod ladder and the socket planes, simulated with rigid-body physics, and drawn as instruction sheets.",
+      "version": "1.0.0",
+      "author": { "name": "Max Mardones" },
+      "category": "Design",
+      "homepage": "https://github.com/MAXMARDONES/knex-cad",
+      "keywords": ["knex", "cad", "physics", "simulation", "mechanism"]
+    }
+  ]
+}
