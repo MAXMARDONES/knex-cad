@@ -43,6 +43,18 @@
   body.shot main { grid-template-columns:1fr; }
   body.shot #stepInfo { left:50%; transform:translateX(-50%); top:auto; bottom:18px; text-align:center; max-width:80%; }
   body.shot.bare #stepInfo { display:none; }
+  #liveLog { display:flex; flex-direction:column; gap:6px; overflow:auto; max-height:calc(100vh - 230px); }
+  #liveLog .ev { border-left:3px solid var(--line); padding:5px 8px; background:var(--surface-2); border-radius:0 4px 4px 0; font-size:12px; }
+  #liveLog .ev b { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  #liveLog .ev .t { float:right; font-family:var(--mono); font-size:10px; color:var(--muted); }
+  #liveLog .ev .tx { white-space:pre-wrap; margin-top:3px; }
+  #liveLog .ev img { width:100%; border-radius:4px; margin-top:5px; border:1px solid var(--line); }
+  #liveLog .ev.reasoning { border-left-color:var(--tech,#2563D9); }
+  #liveLog .ev.tool { border-left-color:var(--accent); }
+  #liveLog .ev.file { border-left-color:var(--ok); }
+  #liveLog .ev.build { border-left-color:var(--ok); }
+  #liveLog .ev.error { border-left-color:var(--err); }
+  #liveLog .ev.image { border-left-color:var(--warn); }
   aside { border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; min-height:0; }
   .tabs { display:flex; border-bottom:1px solid var(--line); }
   .tabs button { flex:1; background:none; border:0; border-bottom:2px solid transparent; padding:8px 4px; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }
@@ -106,6 +118,7 @@
       <button role="tab" aria-selected="true" data-tab="issues">Issues</button>
       <button role="tab" aria-selected="false" data-tab="parts">Parts</button>
       <button role="tab" aria-selected="false" data-tab="phys">Physics</button>
+      <button role="tab" aria-selected="false" data-tab="live">Session</button>
       <button role="tab" aria-selected="false" data-tab="knx">Build file</button>
     </div>
     <div class="panel on" id="tab-issues"><div class="note">Click an issue to fly the camera to it. Errors are geometry that cannot be built; warnings are things to double-check.</div><div id="issues"></div></div>
@@ -135,6 +148,17 @@
       <table id="physJoints"></table>
       <table id="physBeams" style="margin-top:10px"></table>
       <pre id="physOut" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--muted);margin-top:10px"></pre>
+    </div>
+    <div class="panel" id="tab-live">
+      <div class="row">
+        <span class="pill" id="liveCount">0</span>
+        <label style="font-family:var(--mono);font-size:12px;color:var(--muted)"><input type="checkbox" id="liveFollow" checked> follow</label>
+        <button class="act" id="liveClear">clear</button>
+      </div>
+      <div class="note">Run <code>knex-cad live builds/rig.knx --open</code> and this fills with what the
+        agent is doing: the files it changes, the notes it posts, the pictures it looks at. Edit the build
+        file and the model recompiles here without a reload.</div>
+      <div id="liveLog"></div>
     </div>
     <div class="panel" id="tab-knx">
       <div class="row"><button class="act primary" id="apply">Apply</button><button class="act" id="save" hidden>Save to shared</button><span class="note" id="savemsg"></span></div>
@@ -1436,7 +1460,7 @@ KNEX.phys.mech = function (W, s) {
   return W;
 };
 </script>
-<script>var EMBEDDED_KNX = "T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! centring springs: four red rods anchored in the frame, sliding through hubs in the deck.\n! They are the only thing holding the bed level; the sim shows the rig flops without them.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\nR SL -2,-1,5.5 red beam\nR NL -2,1,5.5 red beam\nR SR 2,-1,5.5 red beam\nR NR 2,1,5.5 red beam\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n";</script>
+<script>var EMBEDDED_KNX = "T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! Centring springs: four compliant zigzags from the frame up to the deck. They are the only thing\n! holding the bed level, and the only place to tune how firm the controller feels.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\n! Zigzag: yellow then white, both bending. Swap the yellow for a grey to soften it, or add a segment.\n! Stiffness table: node cli.js spring\nC ZLF1 W8 -2,3,3.5 x y\nC ZLF2 W8 -2,2,4.5 x y\nR NL ZLF1 yellow beam\nR ZLF1 ZLF2 white beam\nR ZLF2 UL2\nC ZLB1 W8 -2,-3,3.5 x y\nC ZLB2 W8 -2,-2,4.5 x y\nR SL ZLB1 yellow beam\nR ZLB1 ZLB2 white beam\nR ZLB2 UL1\nC ZRF1 W8 2,3,3.5 x y\nC ZRF2 W8 2,2,4.5 x y\nR NR ZRF1 yellow beam\nR ZRF1 ZRF2 white beam\nR ZRF2 UR2\nC ZRB1 W8 2,-3,3.5 x y\nC ZRB2 W8 2,-2,4.5 x y\nR SR ZRB1 yellow beam\nR ZRB1 ZRB2 white beam\nR ZRB2 UR1\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n";</script>
 <script>
 /* three.js scene: connectors, rods, joints, props. Coordinates: model mm, z up -> three y up. */
 var scene = new THREE.Scene(), canvas = document.getElementById("c");
@@ -1910,6 +1934,7 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("liveClear").addEventListener("click", function () { LIVE.log = []; $("liveLog").innerHTML = ""; $("liveCount").textContent = "0"; });
 $("shotBtn").addEventListener("click", function () {
   var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore
   renderer.setSize(w * scale, h * scale, false);
@@ -1943,7 +1968,9 @@ catch (err) {                                        // never let a model proble
   document.getElementById("stage").appendChild(b);
 }
 animate();                                           // always: the camera must keep working
+if (window.liveInit) liveInit();
 setTimeout(function () { if (window.toast) toast("drag any part to push it \u00b7 drag the background to orbit \u00b7 shift-drag to pan"); }, 700);
+if (window.liveInit) liveInit();
 setTimeout(function () { if (window.toast) toast("drag any part to push it · drag the background to orbit · shift-drag to pan"); }, 700);
 // ---- live shared document (written from Claude Code with write_db, or saved from this page)
 (function live() {
@@ -2027,6 +2054,48 @@ function toast(msg) {
 }
 </script>
 <script>
+/* Live mode: when the page is served by `knex-cad live`, it hot-reloads the model and shows a running
+   log of what an agent is doing — its notes, the files it touches, and the images it looks at. */
+var LIVE = { on: false, es: null, log: [] };
+function liveInit() {
+  if (!location.port || location.protocol === "file:") return;
+  var es;
+  try { es = new EventSource("/events"); } catch (e) { return; }
+  LIVE.es = es;
+  es.onopen = function () { LIVE.on = true; document.getElementById("live").className = "live on"; document.getElementById("livetxt").textContent = "live · watching"; };
+  es.onerror = function () { LIVE.on = false; document.getElementById("live").className = "live"; document.getElementById("livetxt").textContent = "live · reconnecting"; };
+  es.onmessage = function (m) {
+    var ev; try { ev = JSON.parse(m.data); } catch (e) { return; }
+    if (ev.kind === "engine") { location.reload(); return; }
+    if (ev.kind === "build") {
+      if (ev.data.knx && ev.data.knx !== CURRENT) render(ev.data.knx, "live");
+      document.getElementById("updated").textContent = "compiled " + new Date(ev.t).toLocaleTimeString() +
+        (ev.data.errors ? " · " + ev.data.errors + " errors" : "");
+      liveAdd({ kind: "build", text: ev.data.file + " · " + ev.data.conns + " connectors, " + ev.data.rods + " rods, " +
+                (ev.data.errors ? ev.data.errors + " errors" : "clean") }, ev.t);
+      return;
+    }
+    if (ev.kind === "log") liveAdd(ev.data, ev.t);
+  };
+}
+function liveAdd(d, t) {
+  LIVE.log.push({ d: d, t: t });
+  if (LIVE.log.length > 300) LIVE.log.shift();
+  var box = document.getElementById("liveLog"); if (!box) return;
+  var row = document.createElement("div");
+  row.className = "ev " + (d.kind || "note");
+  var time = new Date(t || Date.now()).toLocaleTimeString();
+  var head = "<b>" + (d.kind || "note") + "</b> <span class='t'>" + time + "</span>";
+  var body = "";
+  if (d.text) body += "<div class='tx'>" + String(d.text).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }) + "</div>";
+  if (d.image) body += "<img src='" + d.image + "' alt='' loading='lazy'>";
+  row.innerHTML = head + body;
+  box.appendChild(row);
+  if (document.getElementById("liveFollow").checked) box.scrollTop = box.scrollHeight;
+  var n = document.getElementById("liveCount"); if (n) n.textContent = LIVE.log.length;
+}
+</script>
+<script>
 /* URL parameters, so a screenshot can be asked for in one line:
    ?view=iso|front|back|left|right|top&step=N&stress=1&labels=1&hide=props,joints,rods&run=2.5&surface=... */
 (function () {
@@ -2073,7 +2142,7 @@ function toast(msg) {
     var box = new THREE.Box3().setFromObject(world);
     if (box.isEmpty()) return;
     CAM.target.copy(box.getCenter(new THREE.Vector3()));
-    CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : (q.shot ? 1.05 : 1.35)));
+    CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : (q.shot ? 1.18 : 1.35)));
   };
   var t = setInterval(function () { if (window.MODEL && window.applyViewParams) { clearInterval(t); applyViewParams(); } }, 30);
 })();

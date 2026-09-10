@@ -78,6 +78,7 @@ node cli.js sim builds/rig.knx --surface desk-wood --press "finger left"=1 --sec
 node cli.js render builds/rig.knx out.svg --view iso --labels --hide props
 node cli.js instructions builds/rig.knx docs/instructions     # a sheet per step, new parts highlighted
 knex-cad view                                                 # build the 3D bench and open it
+knex-cad live builds/rig.knx --open                           # hot-reloading bench with a session feed
 ```
 
 Views: `iso iso2 front back left right top low`. Masking: `hide=props,joints,rods,conns,spacers,loads`
@@ -134,6 +135,12 @@ between them is 3 U and does not exist.
 Within a module, build in small steps: append ten or twenty lines, run the CLI, fix what it says, continue.
 A build written all at once usually has a dozen impossible spans in it. Finish with `sim`, and look at a
 `shot` before showing anyone anything.
+
+**When someone is watching.** `knex-cad live <build> --open` serves the bench, recompiles on every save so
+the model follows your edits without a reload, and shows a session feed. Your file edits and commands
+appear there on their own; add your thinking with `knex-cad log --kind reasoning "..."` and the pictures
+you looked at with `knex-cad log --kind image <file> "..."`. Post the reasoning before the change, not
+after.
 
 **When the shape is not a lattice.** A cat, a tree, a curve: source reference images first and pin the real
 dimensions, then approximate. Curvature comes from a chain of bending rods (`beam`) through straight

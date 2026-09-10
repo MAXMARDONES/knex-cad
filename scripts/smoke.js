@@ -111,6 +111,13 @@ step("declared forces are pressable", function () {
     if (!isFinite(b.x[0]) || !isFinite(b.x[1]) || !isFinite(b.x[2])) throw new Error("body " + i + " went non-finite under load");
   });
 });
+step("the session feed renders", function () {
+  ctx.liveInit();                                        // no port in the stub: must be a safe no-op
+  ctx.liveAdd({ kind: "reasoning", text: "a note" }, Date.now());
+  ctx.liveAdd({ kind: "image", text: "a picture", image: "data:image/png;base64,iVBORw0KGgo=" }, Date.now());
+  ctx.liveAdd({ kind: "build", text: "recompiled" }, Date.now());
+  if (ctx.LIVE.log.length !== 3) throw new Error("the feed did not record the events");
+});
 step("cursor drag applies a force", function () {
   var b = ctx.PHYS.W.bodies.filter(function (x) { return !x.fixed; })[0];
   if (!b) return;                                        // a build with nothing that moves: nothing to drag

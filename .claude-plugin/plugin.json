@@ -19,5 +19,6 @@
   "repository": "https://github.com/MAXMARDONES/knex-cad",
   "license": "MIT",
   "skills": "./skills/",
-  "commands": "./commands/"
+  "commands": "./commands/",
+  "hooks": "./hooks/hooks.json"
 }

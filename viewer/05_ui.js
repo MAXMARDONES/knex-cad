@@ -29,6 +29,7 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("liveClear").addEventListener("click", function () { LIVE.log = []; $("liveLog").innerHTML = ""; $("liveCount").textContent = "0"; });
 $("shotBtn").addEventListener("click", function () {
   var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore
   renderer.setSize(w * scale, h * scale, false);
@@ -62,7 +63,9 @@ catch (err) {                                        // never let a model proble
   document.getElementById("stage").appendChild(b);
 }
 animate();                                           // always: the camera must keep working
+if (window.liveInit) liveInit();
 setTimeout(function () { if (window.toast) toast("drag any part to push it \u00b7 drag the background to orbit \u00b7 shift-drag to pan"); }, 700);
+if (window.liveInit) liveInit();
 setTimeout(function () { if (window.toast) toast("drag any part to push it · drag the background to orbit · shift-drag to pan"); }, 700);
 // ---- live shared document (written from Claude Code with write_db, or saved from this page)
 (function live() {

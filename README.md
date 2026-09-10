@@ -36,6 +36,20 @@ with real parts, simulates it with gravity and friction, and draws the instructi
 
 ---
 
+## What it is
+
+`.knx` is a small declarative language and this is its compiler. A preprocessor expands modules, a parser
+reads the statements, and a resolver walks a worklist because a connector can depend on a rod and a rod on
+a connector. It infers what it can: a rod's colour from the span it has to cover, a connector's plane from
+whatever you attached to it. The checker is the type checker, and the type system is physical — a span
+that is not on the ladder is a type error, and it is reported by line number with the fix.
+
+Then a runtime that executes the model as rigid-body physics, and three back ends: a 3D render, a line
+drawing and a set of instruction sheets. `patterns/` is the standard library. `MOD` is a module and `Z` is
+its exported interface, checked for fit when two of them meet.
+
+---
+
 ## How it works
 
 ### You write the nodes. The tool works out whether it can exist.
@@ -206,6 +220,27 @@ node cli.js sim builds/demo_mech.knx    # motor, gears, string, band and ball in
 <img src="docs/stress.png" width="700" alt="the stress view"/>
 </div>
 
+### Live mode: watch an agent work
+
+```bash
+node cli.js live builds/rig.knx --open
+```
+
+A local server, no dependencies, that serves the bench and watches the build and the engine. Save the
+`.knx` and the model **recompiles in the browser without a reload**. Change the engine and the page
+reloads itself.
+
+It also carries a session feed. Every file an agent edits and every command it runs shows up there
+through the plugin's hook, and the agent can narrate:
+
+```bash
+knex-cad log --kind reasoning "checking whether the fork clears the payload"
+knex-cad log --kind image docs/patterns/07-gear-pair.png "the mesh distance is one white rod"
+```
+
+So you can sit and watch: what it is thinking, what it looked at, what it touched, and the model rebuilding
+as it goes. `/knex-cad:live` starts it and tells the agent to narrate.
+
 ### The bench
 
 `node cli.js view` builds a single self-contained HTML file and opens it. It runs the same engine live:
@@ -332,6 +367,7 @@ That gives you the skill and five slash commands:
 | `/knex-cad:render [build]` | draw a view, or generate the whole instruction set |
 | `/knex-cad:new [name] [what]` | start a build from a validated pattern, one step at a time |
 | `/knex-cad:parts` | the catalogue, the physics model and the build rules |
+| `/knex-cad:live` | open the live bench and narrate the work into it |
 
 ### Or drop the skill in by hand
 
@@ -427,6 +463,7 @@ certified values. `node cli.js parts` says which is which.
 - [x] Pattern library, part catalogue, engineering notes
 - [x] Claude Code plugin: skill plus five slash commands, and AGENTS.md for Codex
 - [x] Modules with `MOD`/`USE`, and `Z` ports that check whether two sub-assemblies actually meet
+- [x] Live mode: hot reload, and a session feed of what the agent is doing
 - [ ] Finite-element pass, for the force in every member of a rigid truss
 - [ ] Micro and Jumbo K'NEX ladders
 - [ ] Export to STL and to LDraw-style part lists

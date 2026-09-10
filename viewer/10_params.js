@@ -45,7 +45,7 @@
     var box = new THREE.Box3().setFromObject(world);
     if (box.isEmpty()) return;
     CAM.target.copy(box.getCenter(new THREE.Vector3()));
-    CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : (q.shot ? 1.05 : 1.35)));
+    CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : (q.shot ? 1.18 : 1.35)));
   };
   var t = setInterval(function () { if (window.MODEL && window.applyViewParams) { clearInterval(t); applyViewParams(); } }, 30);
 })();

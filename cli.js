@@ -9,6 +9,31 @@ if (file === "sim") {
   if (!target) { console.error("usage: node cli.js sim build.knx [--surface s] [--press \"name\"=gain] [--seconds n] [--trace]"); process.exit(2); }
   process.exit(require(path.join(__dirname, "scripts", "sim_cli.js"))(KNEX, fs, target, args));
 }
+if (file === "live") {                                   // hot-reloading bench with a session feed
+  require(path.join(__dirname, "scripts", "live.js"))(args);
+  return;
+}
+if (file === "log") {                                    // post to a running live server
+  var http = require("http");
+  var pos = args.filter(function (a) { return !isOpt(a); });
+  var text = pos.slice(1).join(" ");
+  function o(f, d) { var i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; }
+  var payload = { kind: o("--kind", "note"), text: text };
+  var img = o("--image");
+  if (img) {
+    var ext = path.extname(img).slice(1) || "png";
+    payload.image = "data:image/" + (ext === "jpg" ? "jpeg" : ext) + ";base64," + fs.readFileSync(img).toString("base64");
+    payload.kind = o("--kind", "image");
+    if (!payload.text) payload.text = path.basename(img);
+  }
+  var body = JSON.stringify(payload);
+  var req = http.request({ host: "localhost", port: Number(o("--port", 8730)), path: "/log", method: "POST",
+                           headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) } },
+    function (res) { res.resume(); process.exit(0); });
+  req.on("error", function (e) { console.error("no live server on port " + o("--port", 8730) + " (" + e.code + "). Start one with: knex-cad live"); process.exit(1); });
+  req.end(body);
+  return;
+}
 if (file === "ports") {                                  // what a build offers other modules, and whether they fit
   var pos = args.filter(function (a) { return !isOpt(a); });
   if (!pos[1]) { console.error("usage: node cli.js ports build.knx"); process.exit(2); }
@@ -88,7 +113,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx"); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\""); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");
