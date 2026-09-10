@@ -105,7 +105,15 @@
       j.ax = V.unit(V.add(j.aA, j.aB)); j.t = perp(j.ax);
       j.eLin = V.sub(V.add(j.B.x, j.rBw), V.add(j.A.x, j.rAw));
       j.eAng = V.cross(j.aA, j.aB);
-      j.acc = [0, 0, 0]; j.accSpin = 0;
+      j.acc = [0, 0, 0]; j.accSpin = 0; j.accSlide = 0;
+      /* Where the hub sits along its rod right now, measured in the rod's own frame so it survives the
+         whole assembly moving. Positive slideOut means it has run off one end and by how much. */
+      j.slideOut = 0;
+      if (j.travel && !j.locked) {
+        var uw = P.qrot(j.B.q, j.travel.u), p0w = j.B.toWorld(j.travel.p0);
+        var at = V.dot(V.sub(V.add(j.A.x, j.rAw), p0w), uw);
+        j.slideOut = at > j.travel.hi ? at - j.travel.hi : at < j.travel.lo ? at - j.travel.lo : 0;
+      }
     });
     KNEX.phys.collide(W);
     // ---- solve
@@ -116,6 +124,12 @@
         j.acc[0] += rowLin(j.A, j.rAw, j.B, j.rBw, j.t[0], b * V.dot(j.eLin, j.t[0]));
         j.acc[1] += rowLin(j.A, j.rAw, j.B, j.rBw, j.t[1], b * V.dot(j.eLin, j.t[1]));
         if (j.locked) j.acc[2] += rowLin(j.A, j.rAw, j.B, j.rBw, j.ax, b * V.dot(j.eLin, j.ax));
+        else if (j.slideOut) {                                           // run out of rod: stop it there
+          // One-sided, so clamp the impulse ACCUMULATED over the iterations, not each one on its own.
+          var loS = j.slideOut > 0 ? 0 : -1e9, hiS = j.slideOut > 0 ? 1e9 : 0;
+          var lsl = rowLin(j.A, j.rAw, j.B, j.rBw, j.ax, -b * j.slideOut, loS - j.accSlide, hiS - j.accSlide);
+          j.accSlide += lsl; j.acc[2] += lsl;
+        }
         rowAng(j.A, j.B, j.t[0], b * V.dot(j.eAng, j.t[0]));
         rowAng(j.A, j.B, j.t[1], b * V.dot(j.eAng, j.t[1]));
         var lim = j.lockedSpin ? 1e9 : j.mu * (D.hubHoleD / 2000) * Math.hypot(j.acc[0], j.acc[1], j.acc[2]);

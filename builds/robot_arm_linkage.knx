@@ -1,0 +1,619 @@
+T Six-axis K'NEX arm on a Caterpillar lever stand: rigid linkage only, no strings or bands
+# U = 37.5 mm, z up, desk at z = 0. Nothing in the drive path can pull only: every axis is driven
+# by rods, cranks and gears, so every lever pushes AND pulls its axis.
+! ground frame: a 4U square deck on four anchored feet, with the yaw axle standing in the middle
+C P1 B7 2,2,1.5 z -x
+C P1v B7 2,2,1.5 x -z
+C P2 B7 2,-2,1.5 z y
+C P2v B7 2,-2,1.5 x -z
+C P3 B7 -2,-2,1.5 z x
+C P3v B7 -2,-2,1.5 x -z
+C P4 B7 -2,2,1.5 z -y
+C P4v B7 -2,2,1.5 x -z
+C M1 W8 0,2,1.5
+C M2 W8 2,0,1.5
+C M3 W8 0,-2,1.5
+C M4 W8 -2,0,1.5
+C BC B7 0,0,1.5 z x+y
+C BCV B7 0,0,1.5 y z
+R P1 M1
+R M1 P4
+R P4 M4
+R M4 P3
+R P3 M3
+R M3 P2
+R P2 M2
+R M2 P1
+R BC P1
+R BC P2
+R BC P3
+R BC P4
+! feet: the only parts that touch the desk, and the four points the stand is clamped by
+C FT1 W8 2,2,0.5 x y
+C FT2 W8 2,-2,0.5 x y
+C FT3 W8 -2,-2,0.5 x y
+C FT4 W8 -2,2,0.5 x y
+R FT1 P1v
+R FT2 P2v
+R FT3 P3v
+R FT4 P4v
+A FT1
+A FT2
+A FT3
+A FT4
+W ballast M4 mass=600
+! the yaw axle stands on the centre 3D pair and is capped: the house turns on it
+R BCV 0,0,5.5 red
+C YCAP D1 0,0,5.5 y -z
+! the house: a braced box on two spacer-parked hubs. Its -x face is left open on purpose: the swing
+! pinion runs down it and the operator's console hangs off it.
+H Y1 W8 0,0,2.5
+H Y2 W8 0,0,4.5
+P 0,0,2.3 silver
+P 0,0,2.7 silver
+C CA B7 1,1,2.5 z -x
+C Av B7 1,1,2.5 -y z
+C CB B7 1,-1,2.5 z y
+C Bv B7 1,-1,2.5 -x z
+C CC B7 -1,-1,2.5 z x
+C Cv B7 -1,-1,2.5 y z
+C CD B7 -1,1,2.5 z -y
+C Dv B7 -1,1,2.5 y z
+C PN W8 -1,0,2.5
+R Y1 CA
+R Y1 CB
+R Y1 CC
+R Y1 CD
+R CA CB
+R CB CC
+R CC PN
+R PN CD
+R CD CA
+C CA2 B7 1,1,4.5 z -x
+C A2v B7 1,1,4.5 -x -z
+C CB2 B7 1,-1,4.5 z y
+C B2v B7 1,-1,4.5 y -z
+C CC2 B7 -1,-1,4.5 z x
+C C2v B7 -1,-1,4.5 y -z
+C CD2 B7 -1,1,4.5 z -y
+C D2v B7 -1,1,4.5 y z
+C PN2 W8 -1,0,4.5
+R Y2 CA2
+R Y2 CB2
+R Y2 CC2
+R Y2 CD2
+R CA2 CB2
+R CB2 CC2
+R CC2 PN2
+R PN2 CD2
+R CD2 CA2
+R Av A2v
+R Bv B2v
+R Cv C2v
+R Dv D2v
+R A2v Bv
+R Cv B2v
+R D2v Av
+! CONSOLE: the operator's stand. It hangs off the open -x face of the house and is braced down to
+! the lower ring, so every lever pushes against the machine and the machine pushes against the desk.
+C KA0 W8 -3,-1,2.5 -y x
+C KB0 W8 -3,1,2.5 -y x
+R CC KA0
+R CD KB0
+R C2v KA0
+R D2v KB0
+C KA B7 -3,-1,4.5 z -y
+C KAv B7 -3,-1,4.5 y -z
+C KB B7 -3,1,4.5 z -y
+C KBv B7 -3,1,4.5 y -z
+R KA0 KAv
+R KB0 KBv
+R CC2 KA
+R CD2 KB
+R CC2 KB
+C KC B7 -3,-2,4.5 x y
+C KCv B7 -3,-2,4.5 y z
+C KM W8 -3,0,4.5 x y
+C KD B7 -3,2,4.5 x y
+C KDv B7 -3,2,4.5 y z
+R KC KA
+R KA KM
+R KM KB
+R KB KD
+C KE1 B7 -2,-2,4.5 z x
+C KE1v B7 -2,-2,4.5 y z
+C KE2 B7 -2,2,4.5 z x
+C KE2v B7 -2,2,4.5 y z
+R KCv KE1
+R KDv KE2
+R KE1 KA
+R KE2 KB
+! the console mast, and the lever shaft one unit in front of it
+C LT1 B7 -3,-2,6.5 x -z
+C LT2 W8 -3,-1,6.5 z y
+C LT3 W8 -3,0,6.5 x -z
+C LT4 W8 -3,1,6.5 z y
+C LT5 B7 -3,2,6.5 x -y
+R KC LT1
+R KD LT5
+R LT1 LT2
+R LT2 LT3
+R LT3 LT4
+R LT4 LT5
+R KC LT3
+R KM LT5
+C LS1 B7 -2,-2,6.5 z x+y
+C LS1v B7 -2,-2,6.5 y -z
+C LS2 B7 -2,2,6.5 z -x
+C LS2v B7 -2,2,6.5 y -z
+R LT1 LS1
+R LT5 LS2
+R LT2 LS1
+R LT4 LS2
+R KE1v LS1v
+R KE2v LS2v
+R LS1 LS2
+! AXIS 1 swing: a 14-tooth pinion on a vertical shaft in the house rolls round the 34-tooth gear on
+! the yaw bearing. 14 + 34 teeth mesh at exactly 37.5 mm, one green rod, so the pinion shaft stands
+! one unit from the axle. The tiller is tan-clipped to that shaft; without the clip it would spin
+! inside its own hub and drive nothing.
+R -1,0,1.5 -1,0,5.5 red
+C PSB D1 -1,0,1.5 x z
+C PST D1 -1,0,5.5 x -z
+P -1,0,2.3 blue
+P -1,0,2.7 blue
+G ghouse Y1 teeth=34
+G gpin PN teeth=14
+H YLV W8 -1,0,5.2
+L YLV
+C YLG D1 -2.41421,0,5.2 z x
+R YLV YLG
+F YLG 0,0.01,0 swing
+! the shoulder deck: a braced box on the house top ring carrying the shoulder shaft
+R 1,-2,6.5 1,2,6.5 red
+C SC1 D1 1,-2,6.5 z y
+C SC2 D1 1,2,6.5 z -y
+H N1 W8 1,-1,6.5 -z
+H N2 W8 1,1,6.5 -z
+R B2v N1
+R A2v N2
+R C2v N1
+R D2v N2
+! THE LEVER BANK: five bell cranks riding one red shaft on the console, handles up, crank pins
+! forward. Every lever end is a hub parked between two spacers, so it is a true revolute: the run
+! pushes as well as it pulls and no axis needs a return spring.
+! lever 2 - shoulder
+H LV2 W8 -2,0,6.5
+P -2,-0.15,6.5 blue
+P -2,0.15,6.5 blue
+C LV2H D1 -2,0,10.5 y -z
+R LV2 LV2H
+C LV2C W8 0,0,8.5 x-z y
+R LV2 LV2C
+C LV2P D1 0,-1,8.5 z y
+R LV2C LV2P
+H LV2K W8 0,-0.5,8.5
+P 0,-0.65,8.5 blue
+P 0,-0.35,8.5 blue
+! lever 3 - elbow
+H LV3 W8 -2,-0.7,6.5
+P -2,-0.85,6.5 blue
+P -2,-0.55,6.5 blue
+C LV3H D1 -2,-0.7,10.5 y -z
+R LV3 LV3H
+C LV3C W8 -1,-0.7,6.5 z -y
+R LV3 LV3C
+C LV3P D1 -1,-1.7,6.5 z y
+R LV3C LV3P
+H LV3K W8 -1,-1.2,6.5
+P -1,-1.35,6.5 blue
+P -1,-1.05,6.5 blue
+! lever 4 - wristpitch
+H LV4 W8 -2,0.7,6.5
+P -2,0.55,6.5 blue
+P -2,0.85,6.5 blue
+C LV4H D1 -2,0.7,10.5 y -z
+R LV4 LV4H
+C LV4C W8 -1,0.7,6.5 z y
+R LV4 LV4C
+C LV4P D1 -1,1.7,6.5 z -y
+R LV4C LV4P
+H LV4K W8 -1,1.2,6.5
+P -1,1.05,6.5 blue
+P -1,1.35,6.5 blue
+! lever 5 - roll
+H LV5 W8 -2,-1.5,6.5
+P -2,-1.65,6.5 blue
+P -2,-1.35,6.5 blue
+C LV5H D1 -2,-1.5,10.5 y -z
+R LV5 LV5H
+C LV5C W8 -1,-1.5,5.5 x+z -y
+R LV5 LV5C
+C LV5P D1 -1,-2.5,5.5 z y
+R LV5C LV5P
+H LV5K W8 -1,-2,5.5
+P -1,-2.15,5.5 blue
+P -1,-1.85,5.5 blue
+! lever 6 - grip
+H LV6 W8 -2,1.5,6.5
+P -2,1.35,6.5 blue
+P -2,1.65,6.5 blue
+C LV6H D1 -2,1.5,10.5 y -z
+R LV6 LV6H
+C LV6C W8 0,1.5,4.5 x+z y
+R LV6 LV6C
+C LV6P D1 0,2.5,4.5 z -y
+R LV6C LV6P
+H LV6K W8 0,2.2,4.5
+P 0,2.05,4.5 blue
+P 0,2.35,4.5 blue
+F LV2H 0.01,0,0 shoulder
+F LV3H 0.01,0,0 elbow
+F LV4H 0.01,0,0 wristpitch
+F LV5H 0.01,0,0 roll
+F LV6H 0.01,0,0 grip
+! THE UPPER ARM: a flat triangle in the plane y=0, tan-clipped to the shoulder shaft so arm and
+! shaft turn together. The four relay cranks ride free hubs on that same shaft: that is what lets a
+! lever at the base reach past a joint without a cable.
+H UA W8 1,0,6.5 z
+L UA
+C UM8 B7 1,0,8.5 -y -x-z
+C UM8v B7 1,0,8.5 z -y
+R UA UM8
+R 3,-2,6.5 3,2,6.5 red
+C EC1 D1 3,-2,6.5 z y
+C EC2 D1 3,2,6.5 z -y
+H EB W8 3,0,6.5 -z
+R UA EB
+R UM8 EB
+P 1,-1.75,6.5 blue
+P 1,-1.25,6.5 blue
+P 1,-0.75,6.5 blue
+P 1,-0.25,6.5 blue
+P 1,0.25,6.5 blue
+P 1,0.75,6.5 blue
+P 1,1.25,6.5 blue
+P 1,1.75,6.5 blue
+! AXIS 2 shoulder drive: lever 2 -> green coupler -> the 2U mast on the upper arm. A four-bar, so
+! pushing the lever forward lifts the arm and pulling it back drives the arm down. No spring anywhere.
+C UP2 D1 1,-1,8.5 z y
+R UM8 UP2
+H UM8K W8 1,-0.5,8.5
+P 1,-0.65,8.5 blue
+P 1,-0.35,8.5 blue
+R LV2K UM8K
+! FOUR RELAY CRANKS on the shoulder shaft. Each is a bell crank riding a free hub on the shoulder
+! axis: the console lever swings it, and its output crank drives a coupler running parallel to the
+! upper arm. Crank, coupler and the arm make a parallelogram, so the link at the far end keeps the
+! attitude the lever gave it however the shoulder moves. That is the whole trick of this machine.
+! relay RS3 rides the shoulder axis
+H RS3 W8 1,-0.5,6.5 -x+z
+C RS3I W8 0,-0.5,7.5 x+z -y
+C RS3IP D1 0,-1.5,7.5 z y
+H RS3IK W8 0,-1.2,7.5
+P 0,-1.35,7.5 blue
+P 0,-1.05,7.5 blue
+R RS3 RS3I
+R RS3I RS3IP
+R LV3K RS3IK
+C RS3O W8 2,-0.5,7.5 x-z -y
+C RS3OP D1 2,-1.5,7.5 z y
+H RS3OK W8 2,-1,7.5
+P 2,-1.15,7.5 blue
+P 2,-0.85,7.5 blue
+R RS3 RS3O
+R RS3O RS3OP
+! relay RS4 rides the shoulder axis
+H RS4 W8 1,0.5,6.5 -x+z
+C RS4I W8 0,0.5,7.5 x+z y
+C RS4IP D1 0,1.5,7.5 z -y
+H RS4IK W8 0,1.2,7.5
+P 0,1.05,7.5 blue
+P 0,1.35,7.5 blue
+R RS4 RS4I
+R RS4I RS4IP
+R LV4K RS4IK
+C RS4O W8 1,0.5,7.5 x y
+C RS4OP D1 1,1.5,7.5 z -y
+H RS4OK W8 1,1,7.5
+P 1,0.85,7.5 blue
+P 1,1.15,7.5 blue
+R RS4 RS4O
+R RS4O RS4OP
+! relay RS5 rides the shoulder axis
+H RS5 W8 1,-1.5,6.5 -x-z
+C RS5I W8 0,-1.5,5.5 -x+z -y
+C RS5IP D1 0,-2.5,5.5 z y
+H RS5IK W8 0,-2,5.5
+P 0,-2.15,5.5 blue
+P 0,-1.85,5.5 blue
+R RS5 RS5I
+R RS5I RS5IP
+R LV5K RS5IK
+C RS5O W8 2,-1.5,5.5 -x-z -y
+C RS5OP D1 2,-2.5,5.5 z y
+H RS5OK W8 2,-2,5.5
+P 2,-2.15,5.5 blue
+P 2,-1.85,5.5 blue
+R RS5 RS5O
+R RS5O RS5OP
+! relay RS6 rides the shoulder axis
+H RS6 W8 1,1.8,6.5 -z
+C RS6I W8 1,1.8,4.5 -x y
+C RS6IP D1 1,2.8,4.5 z -y
+H RS6IK W8 1,2.2,4.5
+P 1,2.05,4.5 blue
+P 1,2.35,4.5 blue
+R RS6 RS6I
+R RS6I RS6IP
+R LV6K RS6IK
+C RS6O W8 2,1.8,7.5 x-z y
+C RS6OP D1 2,2.8,7.5 z -y
+H RS6OK W8 2,2.2,7.5
+P 2,2.05,7.5 blue
+P 2,2.35,7.5 blue
+R RS6 RS6O
+R RS6O RS6OP
+! THE FOREARM and the three relays that ride the elbow axis. Same idea one link further out: the
+! coupler from a shoulder relay is parallel to the upper arm and the two cranks are equal, so it is
+! a parallelogram and the elbow relay holds its attitude when the shoulder moves.
+H FA W8 3,-0.5,6.5 x+z
+L FA
+C FT B7 4,-0.5,7.5 -y -x-z
+C FTv B7 4,-0.5,7.5 z -y
+C FTP D1 4,-1.5,7.5 z y
+H FTK W8 4,-1,7.5
+P 4,-1.15,7.5 blue
+P 4,-0.85,7.5 blue
+R FA FT
+R FT FTP
+R RS3OK FTK
+R 5,-2,6.5 5,2,6.5 red
+C WC1 D1 5,-2,6.5 z y
+C WC2 D1 5,2,6.5 z -y
+H WB W8 5,-0.5,6.5 -x
+R FA WB
+R FT WB
+! relay RE4 rides the elbow axis
+H RE4 W8 3,0.5,6.5 z
+C RE4I W8 3,0.5,7.5 x y
+C RE4IP D1 3,1.5,7.5 z -y
+H RE4IK W8 3,1,7.5
+P 3,0.85,7.5 blue
+P 3,1.15,7.5 blue
+R RE4 RE4I
+R RE4I RE4IP
+R RS4OK RE4IK
+C RE4O W8 4,0.5,7.5 x-z y
+C RE4OP D1 4,1.5,7.5 z -y
+H RE4OK W8 4,0.7,7.5
+P 4,0.55,7.5 blue
+P 4,0.85,7.5 blue
+R RE4 RE4O
+R RE4O RE4OP
+! relay RE5 rides the elbow axis
+H RE5 W8 3,-1.5,6.5 x-z
+C RE5I W8 4,-1.5,5.5 -x-z -y
+C RE5IP D1 4,-2.5,5.5 z y
+H RE5IK W8 4,-2,5.5
+P 4,-2.15,5.5 blue
+P 4,-1.85,5.5 blue
+R RE5 RE5I
+R RE5I RE5IP
+R RS5OK RE5IK
+C RE5O W8 3,-1.5,7.5 x -y
+C RE5OP D1 3,-2.5,7.5 z y
+H RE5OK W8 3,-2,7.5
+P 3,-2.15,7.5 blue
+P 3,-1.85,7.5 blue
+R RE5 RE5O
+R RE5O RE5OP
+! relay RE6 rides the elbow axis
+H RE6 W8 3,1.8,6.5 x+z
+C RE6I W8 4,1.8,7.5 x-z y
+C RE6IP D1 4,2.8,7.5 z -y
+H RE6IK W8 4,2.2,7.5
+P 4,2.05,7.5 blue
+P 4,2.35,7.5 blue
+R RE6 RE6I
+R RE6I RE6IP
+R RS6OK RE6IK
+C RE6O W8 3,1.8,5.5 -x y
+C RE6OP D1 3,2.8,5.5 z -y
+H RE6OK W8 3,2.2,5.5
+P 3,2.05,5.5 blue
+P 3,2.35,5.5 blue
+R RE6 RE6O
+R RE6O RE6OP
+P 3,-1.35,6.5 blue
+P 3,-0.35,6.5 blue
+P 3,0.15,6.5 blue
+P 3,0.65,6.5 blue
+P 3,1.65,6.5 blue
+! THE WRIST LINK, and the two relays that ride the wrist axis. From here the drive has to turn a
+! corner: the runs from the base all rotate about y, the roll and the jaw rotate about x. A rod
+! sliding vertically through a guide hub is what turns that corner - one slider per axis, driven in
+! the xz plane by the relay and driving in the yz plane through a pin that lies along the roll axis.
+H WL W8 5,0,6.5 x+z
+L WL
+C WT B7 6,0,7.5 -y x-z
+C WTv B7 6,0,7.5 z y
+C WD W8 7,0,6.5 y -x
+C WS B7 7,0,7.5 -y -x
+C WSv B7 7,0,7.5 z -y
+R WL WT
+R WL WD
+R WT WD
+R WT WS
+R WD WS
+C WTP D1 6,1,7.5 z -y
+R WT WTP
+H WTK W8 6,0.7,7.5
+P 6,0.55,7.5 blue
+P 6,0.85,7.5 blue
+R RE4OK WTK
+P 5,-1.35,6.5 blue
+P 5,-0.65,6.5 blue
+P 5,0.15,6.5 blue
+P 5,1.65,6.5 blue
+! relay RW5 rides the wrist axis and feeds the roll slider
+H RW5 W8 5,-1.5,6.5 z
+C RW5I W8 5,-1.5,7.5 x -y
+C RW5IP D1 5,-2.5,7.5 z y
+H RW5IK W8 5,-2,7.5
+P 5,-2.15,7.5 blue
+P 5,-1.85,7.5 blue
+R RW5 RW5I
+R RW5I RW5IP
+R RE5OK RW5IK
+C RW5O B7 7,-1.5,8.5 y -x-z
+C RW5Ov B7 7,-1.5,8.5 z -y
+C RW5OP D1 7,-3.5,8.5 z y
+H RW5OK W8 7,-2.5,8.5
+P 7,-2.65,8.5 blue
+P 7,-2.35,8.5 blue
+R RW5 RW5O
+R RW5O RW5OP
+! relay RW6 rides the wrist axis and feeds the gripper slider
+H RW6 W8 5,1.8,6.5 -z
+C RW6I W8 5,1.8,5.5 x y
+C RW6IP D1 5,2.8,5.5 z -y
+H RW6IK W8 5,2.2,5.5
+P 5,2.05,5.5 blue
+P 5,2.35,5.5 blue
+R RW6 RW6I
+R RW6I RW6IP
+R RE6OK RW6IK
+C RW6O B7 7,1.8,8.5 -y -x-z
+C RW6Ov B7 7,1.8,8.5 z y
+C RW6OP D1 7,2.8,8.5 z -y
+H RW6OK W8 7,2.5,8.5
+P 7,2.35,8.5 blue
+P 7,2.65,8.5 blue
+R RW6 RW6O
+R RW6O RW6OP
+! the roll stub: a red rod welded to the wrist link. The hand rolls on it and the jaw relay rides it
+! too, so both wrist axes are bearings on one shaft and the jaw drive never crosses the roll joint.
+R WS 11,0,7.5 red
+C RSC D1 11,0,7.5 z -x
+! the two slider rods and the brackets that guide them. A slider is what turns the corner between a
+! drive that rotates about y and a joint that rotates about x.
+R 9,-2,6.5 9,-2,8.5 blue
+C ZB W8 9,-2,6.5 x z
+C ZT W8 9,-2,8.5 y -z
+H GZ W8 9,-2,7.5 -x
+R 9,2,6.5 9,2,8.5 blue
+C GB B7 9,2,6.5 y z
+C GBv B7 9,2,6.5 z y
+C GT W8 9,2,8.5 x -z
+C GBDP D1 9,3,6.5 z -y
+H GBDK W8 9,2.5,6.5
+P 9,2.35,6.5 blue
+P 9,2.65,6.5 blue
+H GG W8 9,2,7.5 -x
+C BZ W8 7,-2,7.5 z y
+C BR W8 8,-1,7.5 z x-y
+C BG W8 7,2,7.5 z -y
+C BR2 W8 8,1,7.5 z x+y
+R WSv BZ
+R BZ GZ
+R WSv BR
+R BR GZ
+R WSv BG
+R BG GG
+R WSv BR2
+R BR2 GG
+! AXIS 5 wrist roll: relay -> vertical slider -> a coupler in the yz plane -> the hand's crank
+C ZBP D1 9,-3,6.5 z y
+R ZB ZBP
+H ZBK W8 9,-2.5,6.5
+P 9,-2.65,6.5 blue
+P 9,-2.35,6.5 blue
+R RW5OK ZBK
+C ZTP D1 10,-2,8.5 z -x
+R ZT ZTP
+H ZTK W8 9.5,-2,8.5
+P 9.35,-2,8.5 blue
+P 9.65,-2,8.5 blue
+! THE HAND: a hub on the roll stub, parked so it turns but cannot walk along it
+H HH W8 9,0,7.5 -y
+P 8.85,0,7.5 blue
+P 9.15,0,7.5 blue
+C HC W8 9,-1,7.5 z y
+C HJ W8 9,1,7.5 z -y
+C HD W8 9,0,6.5 y z
+R HH HC
+R HH HJ
+R HH HD
+C HCP D1 10,-1,7.5 z -x
+R HC HCP
+H HCK W8 9.5,-1,7.5
+P 9.35,-1,7.5 blue
+P 9.65,-1,7.5 blue
+R ZTK HCK
+C HA W8 11,0,6.5 y -x
+R HD HA
+! AXIS 6 gripper: one jaw swinging in the yz plane past a fixed anvil, driven by a relay that rides
+! the roll stub itself, so rolling the hand does not tear the jaw drive apart.
+C HJP D1 11,1,7.5 z -x
+R HJ HJP
+H JW W8 10,1,7.5 y
+P 9.85,1,7.5 blue
+P 10.15,1,7.5 blue
+C JC W8 10,2,7.5 z -y
+C JB W8 10,1,6.5 y z
+R JW JC
+R JW JB
+C JF W8 12,1,6.5 y -x
+R JB JF
+C JCP D1 12,2,7.5 z -x
+R JC JCP
+H JCK W8 11,2,7.5
+P 10.85,2,7.5 blue
+P 11.15,2,7.5 blue
+H RJ W8 8,0,7.5 z
+P 7.85,0,7.5 blue
+P 8.15,0,7.5 blue
+C RJI W8 8,0,8.5 y -z
+C RJO B7 8,1,8.5 x -y-z
+C RJOv B7 8,1,8.5 z x
+R RJ RJI
+R RJ RJO
+C RJIP D1 9,0,8.5 y -x
+R RJI RJIP
+H RJIK W8 8.5,0,8.5
+P 8.35,0,8.5 blue
+P 8.65,0,8.5 blue
+C RJOP D1 12,1,8.5 z -x
+R RJO RJOP
+H RJOK W8 11,1,8.5
+P 10.85,1,8.5 blue
+P 11.15,1,8.5 blue
+R RJOK JCK
+C GBP D1 7,2,6.5 y x
+R GB GBP
+H GBK W8 8.5,2,6.5
+P 8.35,2,6.5 blue
+P 8.65,2,6.5 blue
+R RJIK GBK
+R GB GBDP
+R RW6OK GBDK
+! COUNTERWEIGHTS. A rigid linkage backdrives: the arm's own weight turns the levers, and if the
+! operator lets go the arm falls. There is no hydraulic lock and no useful friction here, so each
+! lever carries a counterweight that cancels its share of the arm at the drawn pose. Two rules the
+! hard way: hang the weight BELOW the lever shaft or the balance is an inverted pendulum and will
+! not stand up, and take the sign from the four-bar rather than from intuition - three of these five
+! sit on the opposite side of the lever from where I first put them. Masses are solved, not guessed:
+! measure each lever's drift in the first 60 ms from the drawn pose, build the 5x5 sensitivity matrix
+! and solve it. cw5 and cw6 hang on their own crank pins, which is the same thing with fewer parts.
+C CW2 W8 -6,0,2.5 y x+z
+R LV2 CW2
+W cw2 CW2 mass=172
+C CW3 W8 -1,-0.7,5.5 y -x+z
+R LV3 CW3
+W cw3 CW3 mass=245
+C CW4 W8 -1,0.7,5.5 y -x+z
+R LV4 CW4
+W cw4 CW4 mass=340
+W cw5 LV5C mass=100
+W cw6 LV6C mass=100

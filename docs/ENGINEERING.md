@@ -124,9 +124,18 @@ flexi rods as travel stops, not as centring springs.
   that slides without rotating: the second rail is what kills the spin.
 - **A motor** drives a hub joint against whatever holds it. Give it a torque limit and it stalls like the
   real one rather than delivering infinite force.
-- **Gears** couple two hub joints on a shared carrier at `r₁ω₁ + r₂ω₂ = 0`. Lock a gear to its axle with a
-  tan clip or it just spins inside its own hub, which is the most common reason a K'NEX gear train does
-  nothing.
+- **Gears** couple two hub joints on a shared carrier at `r₁ω₁ + r₂ω₂ = 0`. **The two hub joints must
+  share a body** — that shared body is the carrier the pair turns against — and a gear's rotation *is*
+  the relative rotation of its own hub joint. Which member the gear belongs to decides what it can
+  drive, so lay the carrier out before the teeth.
+  **Never put a tan clip (`L`) on a connector that carries a `G`.** This page used to say the opposite,
+  and it stops the train dead: `L` welds that hub, and the gear's rotation is exactly the rotation the
+  weld forbids. `patterns/07-gear-pair.knx` runs at 45 rpm; add `L` to the gear's connector and it runs
+  at **0.0 rpm** with the motor at its stall torque — and the checker still says 0 errors, so nothing
+  tells you. Clip the *other* member if you need to lock something to a shaft.
+- **A tan clip is a weld, not a brake.** `L` makes the connector and its rod one rigid body about the
+  axis. There is no slipping clutch here and no adjustable friction: `muLock` in the catalogue is set
+  and never read, so a clip either holds completely or is not there.
 - **Strings** are inextensible in tension and limp otherwise, and they run over guides, which is all a
   pulley is. **Rubber bands** are the same routing with a linear pull instead of a limit.
 - **Curved chains.** Straight connectors and bending rods make an arc: the moment at every socket is `EI/R`,

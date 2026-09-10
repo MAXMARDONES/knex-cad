@@ -655,6 +655,14 @@ KNEX.check = function (m, s) {
     var dd = V.segSeg(R1.t0, R1.t1, R2.t0, R2.t1);
     if (dd < D.rodD - 0.1 && !(shared && dd > 5.5)) issue("error", R2.line, "rods " + R1.color + " (line " + R1.line + ") and " + R2.color + " (line " + R2.line + ") intersect: " + dd.toFixed(1) + " mm apart");
   }
+  /* A tan clip on a gear's own connector. `L` welds that hub, and a gear's rotation IS the rotation of
+     that hub, so the pair cannot turn at all: the train stalls and nothing else complains. The
+     engineering notes told people to do exactly this for years. */
+  (s.gears || []).forEach(function (G) {
+    if ((s.locks || []).some(function (L) { return L.conn === G.conn; }))
+      issue("error", G.line, "gear " + G.name + " and a tan clip are both on " + G.conn +
+        ": the clip welds that hub and the gear turns about it, so the train is locked solid. Clip the other member.");
+  });
   // floating parts
   s.conns.forEach(function (K) { if (!K.joints.length && !K.pair) issue("warn", K.line, K.name + " (" + K.kind + ") touches nothing"); });
   /* A bearing resting on the table. A connector is a 37.5 mm disc, so one standing on edge reaches
@@ -985,8 +993,20 @@ KNEX.phys.world = function (s, opts) {
       var a = along(V.mul(pt, 1000));
       return stops.some(function (v) { return Math.abs(v - a) > 0.5 && Math.abs(v - a) < 12; });
     });
+    /* How far the hub can actually slide. A rod is 150 mm long, not infinite, but a hub joint used to
+       constrain the connector as if the rod went on forever: a carriage pushed along one travelled
+       72 metres and the bearing still reported load. Keep the rod's own ends, in its own frame, and
+       stop the hub there. */
+    var travel = null;
+    if (j.kind !== "side" && rod) {
+      var aHub = along(V.mul(anchor, 1000));
+      travel = { p0: V.mul(rod.p0, MM), u: rod.u,
+                 lo: Math.min(along(rod.t0), along(rod.t1)) * MM, hi: Math.max(along(rod.t0), along(rod.t1)) * MM,
+                 at: aHub * MM };
+    }
     return { A: A, B: B, axis: V.unit(j.axis), rA: V.sub(anchor, A.x), rB: V.sub(anchor, B.x), anchor: anchor,
              locked: locked, kind: j.kind, name: j.conns.join("+"), mu: j.kind === "side" ? D.muSide : D.muHub,
+             travel: travel,
              span: j.pts.length > 1 ? V.dist(j.pts[0], j.pts[j.pts.length - 1]) * 1000 : 0, rod: j.rod, acc: [0, 0, 0], accSpin: 0 };
   });
   // ---- compliant rods: a cantilever anchored in its first socket, its far end pulled by the other body
@@ -1170,7 +1190,15 @@ KNEX.phys.world = function (s, opts) {
       j.ax = V.unit(V.add(j.aA, j.aB)); j.t = perp(j.ax);
       j.eLin = V.sub(V.add(j.B.x, j.rBw), V.add(j.A.x, j.rAw));
       j.eAng = V.cross(j.aA, j.aB);
-      j.acc = [0, 0, 0]; j.accSpin = 0;
+      j.acc = [0, 0, 0]; j.accSpin = 0; j.accSlide = 0;
+      /* Where the hub sits along its rod right now, measured in the rod's own frame so it survives the
+         whole assembly moving. Positive slideOut means it has run off one end and by how much. */
+      j.slideOut = 0;
+      if (j.travel && !j.locked) {
+        var uw = P.qrot(j.B.q, j.travel.u), p0w = j.B.toWorld(j.travel.p0);
+        var at = V.dot(V.sub(V.add(j.A.x, j.rAw), p0w), uw);
+        j.slideOut = at > j.travel.hi ? at - j.travel.hi : at < j.travel.lo ? at - j.travel.lo : 0;
+      }
     });
     KNEX.phys.collide(W);
     // ---- solve
@@ -1181,6 +1209,12 @@ KNEX.phys.world = function (s, opts) {
         j.acc[0] += rowLin(j.A, j.rAw, j.B, j.rBw, j.t[0], b * V.dot(j.eLin, j.t[0]));
         j.acc[1] += rowLin(j.A, j.rAw, j.B, j.rBw, j.t[1], b * V.dot(j.eLin, j.t[1]));
         if (j.locked) j.acc[2] += rowLin(j.A, j.rAw, j.B, j.rBw, j.ax, b * V.dot(j.eLin, j.ax));
+        else if (j.slideOut) {                                           // run out of rod: stop it there
+          // One-sided, so clamp the impulse ACCUMULATED over the iterations, not each one on its own.
+          var loS = j.slideOut > 0 ? 0 : -1e9, hiS = j.slideOut > 0 ? 1e9 : 0;
+          var lsl = rowLin(j.A, j.rAw, j.B, j.rBw, j.ax, -b * j.slideOut, loS - j.accSlide, hiS - j.accSlide);
+          j.accSlide += lsl; j.acc[2] += lsl;
+        }
         rowAng(j.A, j.B, j.t[0], b * V.dot(j.eAng, j.t[0]));
         rowAng(j.A, j.B, j.t[1], b * V.dot(j.eAng, j.t[1]));
         var lim = j.lockedSpin ? 1e9 : j.mu * (D.hubHoleD / 2000) * Math.hypot(j.acc[0], j.acc[1], j.acc[2]);

@@ -36,6 +36,14 @@ KNEX.check = function (m, s) {
     var dd = V.segSeg(R1.t0, R1.t1, R2.t0, R2.t1);
     if (dd < D.rodD - 0.1 && !(shared && dd > 5.5)) issue("error", R2.line, "rods " + R1.color + " (line " + R1.line + ") and " + R2.color + " (line " + R2.line + ") intersect: " + dd.toFixed(1) + " mm apart");
   }
+  /* A tan clip on a gear's own connector. `L` welds that hub, and a gear's rotation IS the rotation of
+     that hub, so the pair cannot turn at all: the train stalls and nothing else complains. The
+     engineering notes told people to do exactly this for years. */
+  (s.gears || []).forEach(function (G) {
+    if ((s.locks || []).some(function (L) { return L.conn === G.conn; }))
+      issue("error", G.line, "gear " + G.name + " and a tan clip are both on " + G.conn +
+        ": the clip welds that hub and the gear turns about it, so the train is locked solid. Clip the other member.");
+  });
   // floating parts
   s.conns.forEach(function (K) { if (!K.joints.length && !K.pair) issue("warn", K.line, K.name + " (" + K.kind + ") touches nothing"); });
   /* A bearing resting on the table. A connector is a 37.5 mm disc, so one standing on edge reaches

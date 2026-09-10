@@ -55,8 +55,20 @@ KNEX.phys.world = function (s, opts) {
       var a = along(V.mul(pt, 1000));
       return stops.some(function (v) { return Math.abs(v - a) > 0.5 && Math.abs(v - a) < 12; });
     });
+    /* How far the hub can actually slide. A rod is 150 mm long, not infinite, but a hub joint used to
+       constrain the connector as if the rod went on forever: a carriage pushed along one travelled
+       72 metres and the bearing still reported load. Keep the rod's own ends, in its own frame, and
+       stop the hub there. */
+    var travel = null;
+    if (j.kind !== "side" && rod) {
+      var aHub = along(V.mul(anchor, 1000));
+      travel = { p0: V.mul(rod.p0, MM), u: rod.u,
+                 lo: Math.min(along(rod.t0), along(rod.t1)) * MM, hi: Math.max(along(rod.t0), along(rod.t1)) * MM,
+                 at: aHub * MM };
+    }
     return { A: A, B: B, axis: V.unit(j.axis), rA: V.sub(anchor, A.x), rB: V.sub(anchor, B.x), anchor: anchor,
              locked: locked, kind: j.kind, name: j.conns.join("+"), mu: j.kind === "side" ? D.muSide : D.muHub,
+             travel: travel,
              span: j.pts.length > 1 ? V.dist(j.pts[0], j.pts[j.pts.length - 1]) * 1000 : 0, rod: j.rod, acc: [0, 0, 0], accSpin: 0 };
   });
   // ---- compliant rods: a cantilever anchored in its first socket, its far end pulled by the other body
