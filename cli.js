@@ -9,6 +9,17 @@ if (file === "sim") {
   if (!target) { console.error("usage: node cli.js sim build.knx [--surface s] [--press \"name\"=gain] [--seconds n] [--trace]"); process.exit(2); }
   process.exit(require(path.join(__dirname, "scripts", "sim_cli.js"))(KNEX, fs, target, args));
 }
+if (file === "view") {                                   // build the bench around a model and open it
+  var pos = args.filter(function (a) { return !isOpt(a); });
+  var src = pos[1] || path.join(__dirname, "builds", "rig.knx");
+  var cp = require("child_process");
+  cp.execFileSync(path.join(__dirname, "build_viewer.sh"), [src], { cwd: __dirname, stdio: "inherit" });
+  var page = path.join(__dirname, "docs", "viewer.html");
+  var open = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+  try { cp.execFileSync(open, [page], { stdio: "ignore" }); console.log("opened " + page); }
+  catch (e) { console.log("open this file in a browser: " + page); }
+  process.exit(0);
+}
 if (file === "instructions") {
   var pos = args.filter(function (a) { return !isOpt(a); });
   var src = pos[1], dir = pos[2] || "docs/instructions";
@@ -55,7 +66,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx"); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]"); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");

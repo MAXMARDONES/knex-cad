@@ -1,5 +1,5 @@
 node_modules/
-dist/knex.js
+# dist/knex.js is committed so the plugin runs without a build step
 dist/current.json
 *.png.tmp
 .DS_Store

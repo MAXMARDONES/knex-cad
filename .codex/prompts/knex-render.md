@@ -1,7 +1,5 @@
 ---
 description: Draw a K'NEX build, or generate the full instruction set
-argument-hint: "[path to a .knx file] [--view iso|front|left|top] [--step N]"
-allowed-tools: Bash(knex-cad:*), Read
 ---
 
 Draw the K'NEX build at `$1`.

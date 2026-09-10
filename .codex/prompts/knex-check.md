@@ -1,7 +1,5 @@
 ---
 description: Check a K'NEX build for geometry that cannot be assembled
-argument-hint: "[path to a .knx file, default builds/rig.knx]"
-allowed-tools: Bash(knex-cad:*), Read, Edit
 ---
 
 Check the K'NEX build at `$1` (default `builds/rig.knx`).

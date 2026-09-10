@@ -22,8 +22,13 @@ echo "building"
 node cli.js builds/rig.knx --quiet | tail -1 | sed 's/^/  example model: /'
 ./build_viewer.sh builds/rig.knx | sed 's/^/  /'
 echo
+echo "opening the 3D bench with the example model"
+node cli.js view builds/rig.knx >/dev/null 2>&1 || echo "  open docs/viewer.html by hand"
+echo
 echo "try it"
-echo "  node cli.js parts                       the catalogue and the rules"
-echo "  node cli.js builds/rig.knx              check the example"
-echo "  node cli.js sim builds/rig.knx          simulate it"
-echo "  open docs/viewer.html                   the 3D bench"
+echo "  ./bin/knex-cad parts                    the catalogue and the rules"
+echo "  ./bin/knex-cad builds/rig.knx           check the example"
+echo "  ./bin/knex-cad sim builds/rig.knx       simulate it"
+echo "  ./bin/knex-cad view                     rebuild and open the bench"
+echo
+echo "put it on your PATH:  export PATH=\"$PWD/bin:\$PATH\""

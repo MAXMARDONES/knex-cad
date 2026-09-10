@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# knex-cad on your PATH. Works from any directory: file arguments resolve against your shell's cwd,
+# the engine and the example builds resolve against wherever this repo or plugin lives.
+set -e
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUNDLE="$ROOT/dist/knex.js"
+newest_engine="$(ls -t "$ROOT"/engine/*.js 2>/dev/null | head -1)"
+if [ ! -f "$BUNDLE" ] || [ -n "$newest_engine" ] && [ "$newest_engine" -nt "$BUNDLE" ]; then
+  if [ -w "$ROOT/dist" ] || mkdir -p "$ROOT/dist" 2>/dev/null; then
+    cat "$ROOT"/engine/*.js > "$BUNDLE" 2>/dev/null || true
+  fi
+fi
+[ -f "$BUNDLE" ] || { echo "knex-cad: cannot build $BUNDLE (read-only install?)" >&2; exit 1; }
+# builds/, patterns/ and docs/ are relative to the repo; anything else is relative to your cwd
+case "${1:-}" in
+  builds/*|patterns/*|docs/*) set -- "$ROOT/$1" "${@:2}" ;;
+esac
+exec node "$ROOT/cli.js" "$@"

@@ -1,7 +1,5 @@
 ---
 description: Start a new K'NEX build from a validated pattern
-argument-hint: "[name] [what you want to build]"
-allowed-tools: Bash(knex-cad:*), Read, Write, Edit
 ---
 
 Start a new K'NEX build called `$1`.

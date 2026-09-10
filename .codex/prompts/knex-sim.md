@@ -1,7 +1,5 @@
 ---
 description: Simulate a K'NEX build with gravity, friction, bending and contact
-argument-hint: "[path to a .knx file] [--press \"name\"=1] [--surface desk-wood]"
-allowed-tools: Bash(knex-cad:*), Read
 ---
 
 Simulate the K'NEX build at `$1` (default `builds/rig.knx`) with any extra flags the user passed.

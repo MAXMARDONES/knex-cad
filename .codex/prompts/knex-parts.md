@@ -1,6 +1,5 @@
 ---
 description: Show the K'NEX catalogue, the physics model and the build rules
-allowed-tools: Bash(knex-cad:*), Read
 ---
 
 Run `knex-cad parts` and present it.

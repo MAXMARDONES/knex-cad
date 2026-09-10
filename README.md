@@ -59,7 +59,7 @@ node cli.js builds/rig.knx                                   # check: every prob
 node cli.js sim builds/rig.knx --press "finger left"=1       # simulate: press it and see what moves
 node cli.js render builds/rig.knx out.svg --view iso         # draw: no browser, deterministic
 node cli.js instructions builds/rig.knx docs/instructions    # a sheet per step, LEGO style
-./build_viewer.sh builds/rig.knx && open docs/viewer.html    # a self-contained 3D bench
+node cli.js view                                             # build the 3D bench and open it
 ```
 
 <div align="center">
@@ -120,8 +120,8 @@ cd knex-cad
 ./scripts/install.sh
 ```
 
-It checks what you have, tells you what is missing, builds the engine, verifies the example model and
-writes the viewer. Roughly:
+It checks what you have, tells you what is missing, builds the engine, verifies the example model, writes
+the viewer and **opens the 3D bench with the example loaded**. Roughly:
 
 ```
 required
@@ -134,6 +134,16 @@ building
   dist/knex.js    78472 bytes
   example model: 0 errors, 0 warnings
   docs/viewer.html 131194 bytes
+
+opening the 3D bench with the example model
+```
+
+Put the CLI on your PATH and it works from any directory:
+
+```bash
+export PATH="$PWD/bin:$PATH"
+knex-cad view          # rebuild the bench and open it
+knex-cad parts         # the catalogue
 ```
 
 ### Read the catalogue
@@ -263,10 +273,26 @@ That gives you the skill and five slash commands:
 mkdir -p ~/.claude/skills/knex && cp skill/SKILL.md ~/.claude/skills/knex/
 ```
 
-### For Codex and any other agent
+### Codex, and every other harness
 
-**[AGENTS.md](AGENTS.md)** and **[CLAUDE.md](CLAUDE.md)** carry the reading order and the two rules that
-prevent most mistakes. Then:
+The same guidance is written wherever an agent looks for it:
+
+| harness | file |
+|---|---|
+| Codex, Amp, Jules, and anything following the convention | [AGENTS.md](AGENTS.md) |
+| Claude Code | [CLAUDE.md](CLAUDE.md), plus the plugin above |
+| Gemini CLI | [GEMINI.md](GEMINI.md) |
+| GitHub Copilot | [.github/copilot-instructions.md](.github/copilot-instructions.md) |
+| Cursor, Windsurf, DeepSeek and other rules-file harnesses | `.cursorrules`, `.windsurfrules`, `.rules` |
+
+For Codex's custom prompts, copy the five commands in and you get the same slash commands:
+
+```bash
+mkdir -p ~/.codex/prompts && cp .codex/prompts/*.md ~/.codex/prompts/
+# then /knex-check, /knex-sim, /knex-render, /knex-new, /knex-parts
+```
+
+The deeper reading, for any agent:
 
 - **[docs/ENGINEERING.md](docs/ENGINEERING.md)** — what the geometry forces on you, where stiffness comes
   from, why there are no springs in the box, and the six mistakes made building the example.
@@ -295,8 +321,10 @@ python3 scripts/catalog.py        # redraw the part catalogue
 
 ```
 .claude-plugin/ plugin and marketplace manifests
+bin/knex-cad  the CLI, put on PATH when the plugin is enabled
 commands/     the five slash commands
 skills/knex/  the skill, as the plugin ships it
+.codex/       the same commands as Codex prompts
 engine/       numbered by load order, concatenated into dist/knex.js by ./build.sh
   01-06       catalogue, vectors, parser, geometry solver, checker, entry point
   07          mass properties and the rigid-body partition

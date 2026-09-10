@@ -7,11 +7,12 @@
   "bin": { "knex-cad": "cli.js" },
   "scripts": {
     "build": "./build.sh",
+    "start": "node cli.js view builds/rig.knx",
     "viewer": "./build_viewer.sh builds/rig.knx",
     "check": "./build.sh && node cli.js builds/rig.knx",
     "sim": "./build.sh && node cli.js sim builds/rig.knx",
     "catalog": "python3 scripts/catalog.py"
   },
   "keywords": ["knex", "cad", "physics", "rigid-body", "simulation", "construction-toy", "generative-design"],
-  "files": ["engine", "viewer", "scripts", "builds", "docs", "skill", "cli.js", "build.sh", "build_viewer.sh"]
+  "files": [".claude-plugin", "commands", "skills", "bin", "engine", "viewer", "scripts", "builds", "docs", "skill", "cli.js", "build.sh", "build_viewer.sh"]
 }
