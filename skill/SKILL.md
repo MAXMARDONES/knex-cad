@@ -15,6 +15,7 @@ a physics model, and draws it.
 node cli.js parts            # catalogue, physics model and build rules on one page
 open docs/PATTERNS.md        # twelve validated patterns, each with a drawing
 open docs/ENGINEERING.md     # what the geometry forces on you, and the mistakes already made
+open docs/INTERNALS.md       # only if you are changing the tool: where every feature lives
 open docs/catalog/           # every connector face-on with its socket numbers; the rod ladder; the joints
 ```
 
@@ -135,6 +136,11 @@ between them is 3 U and does not exist.
 Within a module, build in small steps: append ten or twenty lines, run the CLI, fix what it says, continue.
 A build written all at once usually has a dozen impossible spans in it. Finish with `sim`, and look at a
 `shot` before showing anyone anything.
+
+**Pushing things by hand.** In the bench, drag any part with the cursor to apply a force there. Tick
+*hands* and the webcam does it instead: pinch to grab, move to pull, roll your wrist to twist, two hands
+at once. That is the quickest way to find out whether a lever actually works before you write a single
+`F` line.
 
 **When someone is watching.** `knex-cad live <build> --open` serves the bench, recompiles on every save so
 the model follows your edits without a reload, and shows a session feed. Your file edits and commands

@@ -82,6 +82,7 @@
       var scale = L.gain != null ? L.gain : (input.gain != null && L.name === input.gainFor ? input.gain : 1);
       F = V.mul(F, scale);
       b.force = V.add(b.force, F); b.torque = V.add(b.torque, V.cross(V.sub(at, b.x), F));
+      if (L.torque) b.torque = V.add(b.torque, V.mul(L.torque, scale));   // a twist applied about an axis
       L.applied = F;
     });
     // ---- integrate velocities

@@ -29,6 +29,7 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("optHands").addEventListener("change", function () { if (window.handsStart) handsStart(); });
 $("liveClear").addEventListener("click", function () { LIVE.log = []; $("liveLog").innerHTML = ""; $("liveCount").textContent = "0"; });
 $("shotBtn").addEventListener("click", function () {
   var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore

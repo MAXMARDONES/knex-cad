@@ -11,6 +11,11 @@
     <canvas id="c"></canvas>
     <div id="hud"><div class="tip" id="tip"></div></div>
     <div id="toast"></div>
+    <div id="handsPanel">
+      <video id="handsVideo" playsinline muted></video>
+      <canvas id="handsCanvas" width="200" height="150"></canvas>
+      <div class="cap">pinch to grab · move to pull · roll your wrist to twist</div>
+    </div>
     <div id="legend">
       <div>joint load / rod stress</div>
       <div class="bar"></div>
@@ -29,6 +34,7 @@
         <label><input type="checkbox" id="optFollow" checked> follow steps</label>
         <label><input type="checkbox" id="optStress"> stress</label>
         <label><input type="checkbox" id="optDrag" checked> drag to push</label>
+        <label><input type="checkbox" id="optHands"> hands</label>
         <button class="act" id="shotBtn" title="save this view as a PNG">save image</button>
       </div>
     </div>

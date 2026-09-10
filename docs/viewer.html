@@ -31,6 +31,12 @@
   #stepInfo b { font-weight:700; }
   #toast { position:absolute; left:50%; transform:translateX(-50%); bottom:74px; background:var(--ink); color:var(--ground);
            padding:7px 14px; border-radius:6px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  #handsPanel { position:absolute; right:12px; top:12px; width:200px; display:none; border:1px solid var(--line);
+                border-radius:8px; overflow:hidden; background:var(--surface); }
+  #handsPanel.on { display:block; }
+  #handsPanel video { width:200px; height:150px; object-fit:cover; transform:scaleX(-1); display:block; }
+  #handsPanel canvas { position:absolute; left:0; top:0; width:200px; height:150px; }
+  #handsPanel .cap { font-family:var(--mono); font-size:10px; color:var(--muted); padding:5px 7px; line-height:1.35; }
   #legend { position:absolute; right:12px; bottom:74px; background:var(--surface); border:1px solid var(--line); border-radius:8px;
             padding:8px 10px; font-family:var(--mono); font-size:11px; display:none; }
   #legend.on { display:block; }
@@ -91,6 +97,11 @@
     <canvas id="c"></canvas>
     <div id="hud"><div class="tip" id="tip"></div></div>
     <div id="toast"></div>
+    <div id="handsPanel">
+      <video id="handsVideo" playsinline muted></video>
+      <canvas id="handsCanvas" width="200" height="150"></canvas>
+      <div class="cap">pinch to grab · move to pull · roll your wrist to twist</div>
+    </div>
     <div id="legend">
       <div>joint load / rod stress</div>
       <div class="bar"></div>
@@ -109,6 +120,7 @@
         <label><input type="checkbox" id="optFollow" checked> follow steps</label>
         <label><input type="checkbox" id="optStress"> stress</label>
         <label><input type="checkbox" id="optDrag" checked> drag to push</label>
+        <label><input type="checkbox" id="optHands"> hands</label>
         <button class="act" id="shotBtn" title="save this view as a PNG">save image</button>
       </div>
     </div>
@@ -1209,6 +1221,7 @@ KNEX.phys.world = function (s, opts) {
       var scale = L.gain != null ? L.gain : (input.gain != null && L.name === input.gainFor ? input.gain : 1);
       F = V.mul(F, scale);
       b.force = V.add(b.force, F); b.torque = V.add(b.torque, V.cross(V.sub(at, b.x), F));
+      if (L.torque) b.torque = V.add(b.torque, V.mul(L.torque, scale));   // a twist applied about an axis
       L.applied = F;
     });
     // ---- integrate velocities
@@ -1934,6 +1947,7 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("optHands").addEventListener("change", function () { if (window.handsStart) handsStart(); });
 $("liveClear").addEventListener("click", function () { LIVE.log = []; $("liveLog").innerHTML = ""; $("liveCount").textContent = "0"; });
 $("shotBtn").addEventListener("click", function () {
   var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore
@@ -1993,24 +2007,61 @@ setTimeout(function () { if (window.toast) toast("drag any part to push it · dr
 <script>
 /* Push the model with the cursor: drag any part and a force is applied there, live.
    The grab point is tracked in the body's own frame, so it stays on the part as it moves. */
+var GRABS = [];                                          // one per hand, plus the mouse: each pulls and twists
 var DRAG = { on: false, body: null, local: null, target: null, force: [0, 0, 0], arrow: null, N: 0 };
 var DRAG_K = 90;                                        // N per metre of pull; the cap keeps it sane
 var DRAG_MAX = 25;
+var TWIST_K = 0.5;                                       // N.m per radian of wrist twist
+var TWIST_MAX = 0.35;
+function grabsActive() { return GRABS.filter(function (g) { return g.body && !g.body.fixed; }); }
 function dragInput() {
-  if (!DRAG.on || !DRAG.body || DRAG.body.fixed) return {};
-  var V = KNEX.V, P = KNEX.phys;
-  var grab = V.add(DRAG.body.x, P.qrot(DRAG.body.q, DRAG.local));
-  var pull = V.sub(DRAG.target, grab), d = V.norm(pull);
-  var F = d > 1e-6 ? V.mul(pull, Math.min(DRAG_MAX, DRAG_K * d) / d) : [0, 0, 0];
-  DRAG.force = F; DRAG.N = V.norm(F); DRAG.grab = grab;
-  return { loads: [{ body: DRAG.body, at: grab, F: F, world: true, gain: 1 }] };
+  var V = KNEX.V, P = KNEX.phys, loads = [];
+  grabsActive().forEach(function (g) {
+    g.grab = V.add(g.body.x, P.qrot(g.body.q, g.local));
+    var pull = V.sub(g.target, g.grab), d = V.norm(pull);
+    g.force = d > 1e-6 ? V.mul(pull, Math.min(DRAG_MAX, DRAG_K * d) / d) : [0, 0, 0];
+    g.N = V.norm(g.force);
+    var load = { body: g.body, at: g.grab, F: g.force, world: true, gain: 1 };
+    if (g.twist) {                                       // a wrist roll about the view axis becomes a torque
+      var ax = camera.getWorldDirection(new THREE.Vector3());
+      var axis = [ax.x, -ax.z, ax.y];
+      var m = Math.max(-TWIST_MAX, Math.min(TWIST_MAX, TWIST_K * g.twist));
+      load.torque = V.mul(V.unit(axis), m);
+      g.Nm = m;
+    }
+    loads.push(load);
+  });
+  DRAG.on = grabsActive().length > 0;
+  DRAG.N = loads.reduce(function (u, l) { return u + KNEX.V.norm(l.F); }, 0);
+  DRAG.grab = loads.length ? loads[0].at : null;
+  return loads.length ? { loads: loads } : {};
+}
+function grabAt(body, worldPoint, source) {
+  var q = body.q, inv = [-q[0], -q[1], -q[2], q[3]];
+  var g = { body: body, local: KNEX.phys.qrot(inv, KNEX.V.sub(worldPoint, body.x)), target: worldPoint,
+            source: source || "mouse", twist: 0, N: 0 };
+  GRABS = GRABS.filter(function (x) { return x.source !== g.source; }).concat([g]);
+  return g;
+}
+function grabRelease(source) { GRABS = GRABS.filter(function (g) { return g.source !== (source || "mouse"); }); }
+function pickBodyAt(clientX, clientY) {
+  var r = canvas.getBoundingClientRect();
+  var v = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(v, camera);
+  var hits = ray.intersectObjects(PARTS.filter(function (p) { return p.visible; }), true);
+  if (!hits.length) return null;
+  var obj = hits[0].object; while (obj && obj.userData.body == null) obj = obj.parent;
+  if (!obj || !PHYS.W) return null;
+  return { body: PHYS.W.bodies[obj.userData.body], pointMm: hits[0].point };
 }
 function dragArrow() {
   if (!DRAG.arrow) {
     DRAG.arrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 1, 0xE8531A, 14, 8);
     DRAG.arrow.visible = false; scene.add(DRAG.arrow);
   }
-  if (!DRAG.on || !DRAG.grab) { DRAG.arrow.visible = false; return; }
+  var g = grabsActive()[0];
+  if (!g || !g.grab) { DRAG.arrow.visible = false; return; }
+  DRAG.grab = g.grab; DRAG.target = g.target;
   var a = new THREE.Vector3(DRAG.grab[0] * 1000, DRAG.grab[2] * 1000, -DRAG.grab[1] * 1000);
   var b = new THREE.Vector3(DRAG.target[0] * 1000, DRAG.target[2] * 1000, -DRAG.target[1] * 1000);
   var d = b.clone().sub(a), L = Math.max(1, d.length());
@@ -2028,25 +2079,23 @@ function screenToWorldPlane(e, throughMm) {              // point under the curs
 }
 function dragStart(e) {
   if (!PHYS.W || !document.getElementById("optDrag").checked) return false;
-  var r = canvas.getBoundingClientRect();
-  var v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-  ray.setFromCamera(v, camera);
-  var hits = ray.intersectObjects(PARTS.filter(function (p) { return p.visible; }), true);
-  if (!hits.length) return false;
-  var obj = hits[0].object; while (obj && obj.userData.body == null) obj = obj.parent;
-  if (!obj) return false;
-  var body = PHYS.W.bodies[obj.userData.body];
-  if (!body || body.fixed) { toast("that part is bolted to the table"); return false; }
-  var hm = hits[0].point, world = [hm.x / 1000, -hm.z / 1000, hm.y / 1000];
-  var q = body.q, inv = [-q[0], -q[1], -q[2], q[3]];
-  DRAG.body = body; DRAG.local = KNEX.phys.qrot(inv, KNEX.V.sub(world, body.x));
-  DRAG.target = world; DRAG.on = true; DRAG.hitMm = hm.clone();
+  var hit = pickBodyAt(e.clientX, e.clientY);
+  if (!hit) return false;
+  if (!hit.body || hit.body.fixed) { toast("that part is bolted to the table"); return false; }
+  var hm = hit.pointMm, world = [hm.x / 1000, -hm.z / 1000, hm.y / 1000];
+  grabAt(hit.body, world, "mouse");
+  DRAG.hitMm = hm.clone(); DRAG.on = true;
   if (!PHYS.running) { PHYS.running = true; document.getElementById("physRun").textContent = "Pause"; }
   canvas.style.cursor = "grabbing";
   return true;
 }
-function dragMove(e) { if (!DRAG.on) return; var p = screenToWorldPlane(e, DRAG.hitMm); DRAG.target = [p.x / 1000, -p.z / 1000, p.y / 1000]; }
-function dragEnd() { DRAG.on = false; DRAG.body = null; DRAG.N = 0; canvas.style.cursor = ""; if (DRAG.arrow) DRAG.arrow.visible = false; }
+function dragMove(e) {
+  var g = GRABS.filter(function (x) { return x.source === "mouse"; })[0];
+  if (!g) return;
+  var p = screenToWorldPlane(e, DRAG.hitMm);
+  g.target = [p.x / 1000, -p.z / 1000, p.y / 1000];
+}
+function dragEnd() { grabRelease("mouse"); DRAG.on = grabsActive().length > 0; DRAG.N = 0; canvas.style.cursor = ""; if (DRAG.arrow) DRAG.arrow.visible = false; }
 function toast(msg) {
   var el = document.getElementById("toast"); if (!el) return;
   el.textContent = msg; el.style.opacity = 1;
@@ -2093,6 +2142,118 @@ function liveAdd(d, t) {
   box.appendChild(row);
   if (document.getElementById("liveFollow").checked) box.scrollTop = box.scrollHeight;
   var n = document.getElementById("liveCount"); if (n) n.textContent = LIVE.log.length;
+}
+</script>
+<script>
+/* Hand tracking: grab, pull and twist parts with your hands through the webcam.
+   Uses MediaPipe Hands (21 landmarks per hand) loaded on demand from a CDN — the one feature here that
+   touches the network, and only after you switch it on. OpenCV alone does not give finger landmarks.
+   A pinch grabs the part under your hand; moving pulls it; rolling your wrist twists it. */
+var HANDS = { on: false, ready: false, hands: null, video: null, lm: [null, null], pinch: [false, false],
+              roll: [0, 0], base: [0, 0], score: [0, 0], err: null };
+var MP_SRC = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
+var MP_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
+
+function handsLoad() {
+  if (window.Hands) return Promise.resolve();
+  return new Promise(function (res, rej) {
+    var s = document.createElement("script");
+    s.src = MP_SRC; s.crossOrigin = "anonymous";
+    s.onload = function () { res(); };
+    s.onerror = function () { rej(new Error("could not load the hand tracker (offline?)")); };
+    document.head.appendChild(s);
+  });
+}
+function handsStart() {
+  if (HANDS.on) return handsStop();
+  toast("starting the camera");
+  handsLoad().then(function () {
+    return navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: "user" } });
+  }).then(function (stream) {
+    var v = document.getElementById("handsVideo");
+    v.srcObject = stream; v.play();
+    HANDS.video = v;
+    HANDS.hands = new window.Hands({ locateFile: function (f) { return MP_BASE + "/" + f; } });
+    HANDS.hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    HANDS.hands.onResults(handsResults);
+    HANDS.on = true; HANDS.ready = true; HANDS.err = null;
+    document.getElementById("handsPanel").classList.add("on");
+    document.getElementById("optHands").checked = true;
+    if (!PHYS.running) { PHYS.running = true; document.getElementById("physRun").textContent = "Pause"; }
+    toast("pinch to grab, move to pull, roll your wrist to twist");
+    handsPump();
+  }).catch(function (e) {
+    HANDS.err = e.message; HANDS.on = false;
+    document.getElementById("optHands").checked = false;
+    toast("hand tracking unavailable: " + e.message);
+  });
+}
+function handsStop() {
+  HANDS.on = false;
+  ["left", "right"].forEach(function (s) { if (window.grabRelease) grabRelease(s); });
+  if (HANDS.video && HANDS.video.srcObject) HANDS.video.srcObject.getTracks().forEach(function (t) { t.stop(); });
+  document.getElementById("handsPanel").classList.remove("on");
+  document.getElementById("optHands").checked = false;
+}
+function handsPump() {
+  if (!HANDS.on || !HANDS.hands || !HANDS.video) return;
+  HANDS.hands.send({ image: HANDS.video }).then(function () { requestAnimationFrame(handsPump); })
+    .catch(function () { requestAnimationFrame(handsPump); });
+}
+function dist2(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function handsResults(r) {
+  if (!HANDS.on) return;
+  var seen = { left: false, right: false };
+  (r.multiHandLandmarks || []).forEach(function (lm, i) {
+    var label = ((r.multiHandedness || [])[i] || {}).label || (i ? "Left" : "Right");
+    var side = label.toLowerCase() === "left" ? "left" : "right", idx = side === "left" ? 0 : 1;
+    seen[side] = true;
+    HANDS.lm[idx] = lm; HANDS.score[idx] = ((r.multiHandedness || [])[i] || {}).score || 0;
+    // pinch: thumb tip (4) to index tip (8), scaled by the hand's own size so distance from the camera does not matter
+    var span = dist2(lm[0], lm[9]) || 1;
+    var pinch = dist2(lm[4], lm[8]) / span < 0.45;
+    // roll: the angle of the knuckle line, index MCP (5) to pinky MCP (17)
+    var roll = Math.atan2(lm[17].y - lm[5].y, lm[17].x - lm[5].x);
+    // the palm centre, mirrored because the webcam image is
+    var px = (1 - lm[9].x) * canvas.clientWidth, py = lm[9].y * canvas.clientHeight;
+    var r0 = canvas.getBoundingClientRect(), cx = r0.left + px, cy = r0.top + py;
+    HANDS.roll[idx] = roll;
+    var g = GRABS.filter(function (x) { return x.source === side; })[0];
+    if (pinch && !g) {
+      var hit = pickBodyAt(cx, cy);
+      if (hit && hit.body && !hit.body.fixed) {
+        var w = [hit.pointMm.x / 1000, -hit.pointMm.z / 1000, hit.pointMm.y / 1000];
+        var ng = grabAt(hit.body, w, side);
+        ng.hitMm = hit.pointMm.clone(); HANDS.base[idx] = roll;
+      }
+    } else if (pinch && g) {
+      var p = screenToWorldPlane({ clientX: cx, clientY: cy }, g.hitMm);
+      g.target = [p.x / 1000, -p.z / 1000, p.y / 1000];
+      var d = roll - HANDS.base[idx];
+      while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      g.twist = d;
+    } else if (!pinch && g) { grabRelease(side); }
+    HANDS.pinch[idx] = pinch;
+  });
+  ["left", "right"].forEach(function (s, i) { if (!seen[s]) { HANDS.lm[i] = null; HANDS.pinch[i] = false; grabRelease(s); } });
+  handsDraw();
+}
+function handsDraw() {
+  var c = document.getElementById("handsCanvas"); if (!c) return;
+  var g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
+  [0, 1].forEach(function (i) {
+    var lm = HANDS.lm[i]; if (!lm) return;
+    g.fillStyle = HANDS.pinch[i] ? "#E8531A" : "#2E9E4F";
+    lm.forEach(function (p, k) {
+      var x = (1 - p.x) * c.width, y = p.y * c.height;
+      g.beginPath(); g.arc(x, y, k === 4 || k === 8 ? 4 : 2, 0, 6.3); g.fill();
+    });
+    g.strokeStyle = g.fillStyle; g.lineWidth = 1.5;
+    [[0,5],[5,9],[9,13],[13,17],[0,17],[4,8]].forEach(function (e) {
+      g.beginPath(); g.moveTo((1 - lm[e[0]].x) * c.width, lm[e[0]].y * c.height);
+      g.lineTo((1 - lm[e[1]].x) * c.width, lm[e[1]].y * c.height); g.stroke();
+    });
+  });
 }
 </script>
 <script>

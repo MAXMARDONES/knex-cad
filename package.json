@@ -12,7 +12,7 @@
     "check": "./build.sh && node cli.js builds/rig.knx",
     "sim": "./build.sh && node cli.js sim builds/rig.knx",
     "catalog": "python3 scripts/catalog.py",
-    "test": "./build.sh >/dev/null && ./build_viewer.sh builds/rig.knx >/dev/null && node scripts/smoke.js && ./scripts/patterns.sh"
+    "test": "./build.sh >/dev/null && node scripts/check_docs.js && ./build_viewer.sh builds/rig.knx >/dev/null && ./scripts/patterns.sh"
   },
   "keywords": ["knex", "cad", "physics", "rigid-body", "simulation", "construction-toy", "generative-design"],
   "files": [".claude-plugin", "commands", "skills", "bin", "engine", "viewer", "scripts", "builds", "docs", "skill", "cli.js", "build.sh", "build_viewer.sh"]

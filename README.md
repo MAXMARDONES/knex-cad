@@ -258,6 +258,8 @@ the agent works.
 
 - **Drag any part with the cursor** and a force is applied there, while it runs. Drag the background to
   orbit, shift-drag to pan.
+- **Or use your hands.** Tick *hands* and the webcam tracks 21 landmarks per hand: pinch to grab, move to
+  pull, roll your wrist to twist. Two hands grab two parts at once, which is what you want for a lever.
 - A **step slider** that builds the model up, with the parts for that step and a camera that walks around.
 - A **stress view** that colours bending rods and bearings by how close they are to letting go.
 - Joint loads, rod forces, and what broke, updating as it runs.
@@ -407,13 +409,18 @@ mkdir -p ~/.codex/prompts && cp .codex/prompts/*.md ~/.codex/prompts/
 
 The deeper reading, for any agent:
 
+- **[docs/INTERNALS.md](docs/INTERNALS.md)** — where to change things. Every file mapped to what it owns,
+  a table of "I want to add a part / a statement / a physics element / a check, go here", the data shapes
+  you will be handling, and the things that will surprise you.
 - **[docs/ENGINEERING.md](docs/ENGINEERING.md)** — what the geometry forces on you, where stiffness comes
   from, why there are no springs in the box, and the six mistakes made building the example.
 - **[docs/PATTERNS.md](docs/PATTERNS.md)** — copy a pattern rather than inventing a node.
 - **[research/KNEX.md](research/KNEX.md)** — dimensions from the Glickman patents and measured parts, with
   sources. **[research/TECHNIQUES.md](research/TECHNIQUES.md)** — how people actually build.
 
-Everything runs locally. No account, no service, no network.
+Everything runs locally. No account, no service, no network — with one exception, stated plainly: the
+hand tracking downloads MediaPipe from a CDN the first time you switch it on, and only then. Everything
+else works with the network off.
 
 ---
 
@@ -475,6 +482,7 @@ certified values. `node cli.js parts` says which is which.
 - [x] Claude Code plugin: skill plus five slash commands, and AGENTS.md for Codex
 - [x] Modules with `MOD`/`USE`, and `Z` ports that check whether two sub-assemblies actually meet
 - [x] Live mode: hot reload, and a session feed of what the agent is doing
+- [x] Hand tracking: pinch to grab, pull and twist parts with two hands
 - [ ] Finite-element pass, for the force in every member of a rigid truss
 - [ ] Micro and Jumbo K'NEX ladders
 - [ ] Export to STL and to LDraw-style part lists

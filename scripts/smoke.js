@@ -111,6 +111,12 @@ step("declared forces are pressable", function () {
     if (!isFinite(b.x[0]) || !isFinite(b.x[1]) || !isFinite(b.x[2])) throw new Error("body " + i + " went non-finite under load");
   });
 });
+step("hand tracking degrades where there is no camera", function () {
+  if (typeof ctx.handsStart !== "function") throw new Error("hand tracking did not load");
+  ctx.handsStop();                                       // must be safe with no camera and no panel
+  ctx.handsDraw();
+  if (ctx.HANDS.on) throw new Error("hand tracking claims to be running without a camera");
+});
 step("the session feed renders", function () {
   ctx.liveInit();                                        // no port in the stub: must be a safe no-op
   ctx.liveAdd({ kind: "reasoning", text: "a note" }, Date.now());
@@ -118,14 +124,25 @@ step("the session feed renders", function () {
   ctx.liveAdd({ kind: "build", text: "recompiled" }, Date.now());
   if (ctx.LIVE.log.length !== 3) throw new Error("the feed did not record the events");
 });
-step("cursor drag applies a force", function () {
-  var b = ctx.PHYS.W.bodies.filter(function (x) { return !x.fixed; })[0];
-  if (!b) return;                                        // a build with nothing that moves: nothing to drag
-  ctx.DRAG.on = true; ctx.DRAG.body = b; ctx.DRAG.local = [0, 0, 0]; ctx.DRAG.target = [b.x[0] + 0.02, b.x[1], b.x[2]];
+step("a grab pulls, and two hands pull at once", function () {
+  var free = ctx.PHYS.W.bodies.filter(function (x) { return !x.fixed; });
+  if (!free.length) return;                              // a build with nothing that moves: nothing to grab
+  var b = free[0];
+  ctx.grabAt(b, [b.x[0], b.x[1], b.x[2]], "mouse");
+  ctx.GRABS[0].target = [b.x[0] + 0.02, b.x[1], b.x[2]];
   var inp = ctx.dragInput();
-  if (!inp.loads || !inp.loads.length) throw new Error("dragInput produced no load");
-  for (var i = 0; i < 40; i++) ctx.KNEX.phys.step(ctx.PHYS.W, ctx.PHYS.dt, inp);
-  ctx.dragEnd();
+  if (!inp.loads || !inp.loads.length) throw new Error("a grab produced no load");
+  if (!isFinite(inp.loads[0].F[0])) throw new Error("the pull force is not finite");
+  var b2 = free[1] || b;
+  ctx.grabAt(b2, [b2.x[0], b2.x[1], b2.x[2]], "left");
+  ctx.GRABS[ctx.GRABS.length - 1].twist = 0.4;           // a wrist roll becomes a torque
+  var inp2 = ctx.dragInput();
+  if (inp2.loads.length < 2) throw new Error("a second hand did not add a grab");
+  if (!inp2.loads.some(function (l) { return l.torque; })) throw new Error("the twist produced no torque");
+  for (var i = 0; i < 40; i++) ctx.KNEX.phys.step(ctx.PHYS.W, ctx.PHYS.dt, ctx.dragInput());
+  ctx.PHYS.W.bodies.forEach(function (x, i) { if (!isFinite(x.x[0])) throw new Error("body " + i + " went non-finite while grabbed"); });
+  ctx.grabRelease("left"); ctx.dragEnd();
+  if (ctx.GRABS.length) throw new Error("releasing did not clear the grabs");
 });
 console.log(failed ? "\n" + failed + " failure(s)" : "\nall clear");
 process.exit(failed ? 1 : 0);

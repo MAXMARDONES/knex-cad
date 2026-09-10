@@ -11,6 +11,12 @@ Read these before you design anything:
 4. **[docs/DSL.md](docs/DSL.md)** — the full `.knx` grammar.
 5. **[skill/SKILL.md](skill/SKILL.md)** — the same guidance packaged as a Claude Code skill.
 
+**If you are changing the tool rather than using it, read [docs/INTERNALS.md](docs/INTERNALS.md) first.**
+It maps every file to what it owns and has a table of "I want to add X, go here": a rod length, a
+connector kind, a statement in the language, a physics element, a check, a CLI command, a viewer panel.
+It also lists the things that will surprise you. Do not read the engine source to find out where
+something lives; the map is there so you do not have to.
+
 ## Prerequisites
 
 Node 18 or newer and bash. Nothing else is required and there are no npm packages. `python3` with
@@ -52,4 +58,8 @@ patterns/   one technique each, all validated by ./scripts/patterns.sh
 research/   dimensions with sources, and building techniques
 ```
 
-After changing anything in `engine/`, run `./build.sh` before the CLI will see it.
+After changing anything in `engine/`, run `./build.sh` before the CLI will see it. `engine/` and `viewer/`
+are concatenated in filename order, so a file can only use what an earlier one defined — that is why they
+are numbered.
+
+Full architecture, data shapes and extension recipes: [docs/INTERNALS.md](docs/INTERNALS.md).
