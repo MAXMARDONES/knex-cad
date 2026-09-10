@@ -9,6 +9,10 @@ if (file === "sim") {
   if (!target) { console.error("usage: node cli.js sim build.knx [--surface s] [--press \"name\"=gain] [--seconds n] [--trace]"); process.exit(2); }
   process.exit(require(path.join(__dirname, "scripts", "sim_cli.js"))(KNEX, fs, target, args));
 }
+if (file === "replay") {                                 // rebuild a session feed from a transcript
+  require(path.join(__dirname, "scripts", "replay.js"))(args);
+  return;
+}
 if (file === "live") {                                   // hot-reloading bench with a session feed
   require(path.join(__dirname, "scripts", "live.js"))(args);
   return;
@@ -118,7 +122,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\""); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\"  |  node cli.js replay run.jsonl"); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");

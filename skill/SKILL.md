@@ -140,7 +140,8 @@ A build written all at once usually has a dozen impossible spans in it. Finish w
 the model follows your edits without a reload, and shows a session feed. Your file edits and commands
 appear there on their own; add your thinking with `knex-cad log --kind reasoning "..."` and the pictures
 you looked at with `knex-cad log --kind image <file> "..."`. Post the reasoning before the change, not
-after.
+after: a transcript keeps only a signature for your thinking, not the text, so anything you do not post is
+gone. `knex-cad replay <transcript.jsonl>` rebuilds the rest of the feed afterwards.
 
 **When the shape is not a lattice.** A cat, a tree, a curve: source reference images first and pin the real
 dimensions, then approximate. Curvature comes from a chain of bending rods (`beam`) through straight

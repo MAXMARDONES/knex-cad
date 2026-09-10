@@ -241,6 +241,17 @@ knex-cad log --kind image docs/patterns/07-gear-pair.png "the mesh distance is o
 So you can sit and watch: what it is thinking, what it looked at, what it touched, and the model rebuilding
 as it goes. `/knex-cad:live` starts it and tells the agent to narrate.
 
+Missed a session? Rebuild the feed from its transcript:
+
+```bash
+node cli.js replay ~/.claude/projects/<project>/<session>.jsonl --out feed.json
+```
+
+It streams the file, so size does not matter, and posts the tool trail, the checker output and any images
+to a running bench. Note that Claude Code stores a signature for each thinking block but not its text, so
+the reasoning itself cannot be recovered after the fact — that is the reason to have the bench open while
+the agent works.
+
 ### The bench
 
 `node cli.js view` builds a single self-contained HTML file and opens it. It runs the same engine live:
