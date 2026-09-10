@@ -218,6 +218,25 @@ the browser run the same source.
 node cli.js sim builds/demo_mech.knx    # motor, gears, string, band and ball in one rig
 ```
 
+### The demos
+
+Every build in `builds/` is embedded in the bench: pick one from the menu in the header and it loads
+without a reload or a server.
+
+| build | what it is for |
+|---|---|
+| [`robot_arm.knx`](docs/ROBOT_ARM.md) | **six axes, all driven by mechanical linear actuators.** No motors, no gears, no hydraulics: every axis is a rod sliding through guide hubs onto a coupler and a crank. 121 connectors, 7 DOF, and a measured table of what each actuator buys you |
+| `rig.knx` | the worked example: the tilt rig, with the zigzag springs |
+| `demo_mech.knx` | motor, gears, string, band and ball together |
+| `demo_modules.knx` | modules and ports, and the checks that they fit |
+| `demo_props.knx` | the prop catalogue on the table, one of them thrown |
+| `demo_pole.knx` | `FLEX`: a long pole that whips |
+| `demo_bridge.knx` | a generated arch between two hand-built piers |
+
+The arm was built by a fresh Opus session with no memory, no plugins and no access to this
+conversation, from the documentation alone. [What it found](docs/ROBOT_ARM.md) is why the physics
+notes below have a section on things that look like results and are not.
+
 <div align="center">
 <img src="docs/stress.png" width="700" alt="the stress view"/>
 </div>
