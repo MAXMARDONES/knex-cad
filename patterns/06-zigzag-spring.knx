@@ -1,0 +1,12 @@
+T Zigzag compliant spring
+# A serpentine of bending rods. Every segment adds compliance in series, so more segments is softer,
+# and one longer rod in the chain softens it far more than another short one would.
+! anchored at the bottom, free at the top
+C Z0 W8 0,0,0.5 x y
+C Z1 W8 0,2,2.5 x y
+C Z2 W8 0,1,3.5 x y
+C Z3 W8 0,3,5.5 x y
+R Z0 Z1 yellow beam
+R Z1 Z2 white beam
+R Z2 Z3 yellow beam
+F Z3 0,-3,0 push

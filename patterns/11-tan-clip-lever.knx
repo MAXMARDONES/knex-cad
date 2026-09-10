@@ -1,0 +1,21 @@
+T Tan clip lever
+# A connector on an axle spins freely. A tan clip locks it to the rod so the two turn together:
+# that is how a motor drives something instead of the axle just spinning inside the hub.
+! post and axle
+C P1 W8 -2,0,0.5 x y
+C T1 W8 -2,0,2.5 x y
+R P1 T1
+C P2 W8 2,0,0.5 x y
+C T2 W8 2,0,2.5 x y
+R P2 T2
+R -2.828,0,2.5 2.828,0,2.5 grey
+C CL D1 -2.828,0,2.5 y x
+C CR D1 2.828,0,2.5 y -x
+! the lever, locked to the axle
+H LV W8 0,0,2.5 z
+P -0.2,0,2.5 silver
+P 0.2,0,2.5 silver
+L LV
+C LT W8 0,2,2.5 z x
+R LV LT
+W bob LT mass=60

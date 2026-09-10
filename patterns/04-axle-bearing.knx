@@ -1,0 +1,17 @@
+T Axle in a bearing
+# A rod through a connector's centre hole is the only true bearing in the system: it spins and it
+# slides. Spacers either side of each hub stop the sliding; end caps stop the rod walking out.
+! two posts
+C P1 W8 -2,0,0.5 x y
+C P2 W8 2,0,0.5 x y
+C Q1 W8 -2,0,2.5 x y
+C Q2 W8 2,0,2.5 x y
+R P1 Q1
+R P2 Q2
+! the axle, capped, with the spinning wheel hub parked by spacers
+R -2.828,0,2.5 2.828,0,2.5 grey
+C CL D1 -2.828,0,2.5 y x
+C CR D1 2.828,0,2.5 y -x
+H WHEEL W8 0,0,2.5 z
+P -0.2,0,2.5 silver
+P 0.2,0,2.5 silver

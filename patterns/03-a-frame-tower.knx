@@ -1,0 +1,14 @@
+T A-frame tower
+# Legs at 45 degrees so the diagonal closes, all in one vertical plane. The top connector's hub
+# points along x, which is what makes it a bearing for an axle later.
+! base rail
+C B1 W8 -2,-2,0.5 x y
+C B2 W8 -2,0,0.5 x y
+C B3 W8 -2,2,0.5 x y
+R B1 B2
+R B2 B3
+! apex and legs
+C T W8 -2,0,2.5 x y
+R B2 T
+R B1 T
+R B3 T

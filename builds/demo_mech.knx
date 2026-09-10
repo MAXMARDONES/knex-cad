@@ -1,0 +1,57 @@
+T Mechanism demo: motor, gears, string, band, ball
+# Every element the physics engine knows, in one rig small enough to build.
+# Note the feet: two posts in parallel planes can only be tied together through 3D connector pairs.
+! two triangular posts, in the planes x = -2 and x = +2
+C LB B7 -2,-2,0.5 x y
+C LB2 B7 -2,-2,0.5 y x
+C LF B7 -2,2,0.5 x y
+C LF2 B7 -2,2,0.5 y x
+C LT W8 -2,0,2.5 x y
+R LB LF
+R LB LT
+R LF LT
+C RB B7 2,-2,0.5 x y
+C RB2 B7 2,-2,0.5 y x
+C RF B7 2,2,0.5 x y
+C RF2 B7 2,2,0.5 y x
+C RT W8 2,0,2.5 x y
+R RB RF
+R RB RT
+R RF RT
+! tie the two posts together through the 3D halves, so the frame is one rigid body
+R LB2 RB2
+R LF2 RF2
+! drive axle through both post tops, capped. The motor turns it against the frame.
+R -2.828,0,2.5 2.828,0,2.5 grey
+P -2.2,0,2.5 silver
+P -1.8,0,2.5 silver
+P 1.8,0,2.5 silver
+P 2.2,0,2.5 silver
+C DL D1 -2.828,0,2.5 y x
+C DR D1 2.828,0,2.5 y -x
+G g1 LT teeth=34
+M motor LT rpm=45 torque=400
+! idler axle one white rod away: exactly the 34 tooth mesh distance, so g1 drives g2
+C LI W8 -2,1,3.5 x y
+C RI W8 2,1,3.5 x y
+R LT LI
+R RT RI
+R -2.828,1,3.5 2.828,1,3.5 grey
+P -2.2,1,3.5 silver
+P -1.8,1,3.5 silver
+P 1.8,1,3.5 silver
+P 2.2,1,3.5 silver
+C IL D1 -2.828,1,3.5 y x
+C IR D1 2.828,1,3.5 y -x
+G g2 LI teeth=34
+! a lever locked to the idler axle by a tan clip, and a rubber band pulling it back
+H LV W8 1,1,3.5 z
+P 0.8,1,3.5 silver
+P 1.2,1,3.5 silver
+L LV
+C LVT W8 1,3,3.5 z x
+R LV LVT
+E band LVT RF rest=45
+! a ball hanging on a string from the left post
+O ball -2,-2,1.6 d=25 mass=40
+Y tether LT ball

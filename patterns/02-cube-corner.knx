@@ -1,0 +1,13 @@
+T Cube corner: three axes at one node
+# A connector is a plane, so one of them can never hold rods along x, y and z. Two 3D connectors
+# sharing a centre, planes at 90 degrees, can. This is the only way to turn a corner in all three axes.
+! the node
+C N1 B7 0,0,0 z x
+C N2 B7 0,0,0 y z
+! one rod down each axis
+C X W8 2,0,0
+C Y W8 0,2,0
+C Z W8 0,0,2
+R N1 X
+R N1 Y
+R N2 Z

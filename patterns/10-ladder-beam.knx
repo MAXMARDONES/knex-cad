@@ -1,0 +1,16 @@
+T Ladder beam
+# The long span of the system, from the K'NEX User Group's own hint: two rails of connectors, rods
+# along each rail, and a zigzag of shorter rods between them. Far stiffer than one long rod.
+! two rails 1U apart with a white zigzag between them
+C L0 W8 0,0,0
+C L1 W8 2,0,0
+C L2 W8 4,0,0
+C U0 W8 1,1,0
+C U1 W8 3,1,0
+R L0 L1
+R L1 L2
+R U0 U1
+R L0 U0
+R U0 L1
+R L1 U1
+R U1 L2

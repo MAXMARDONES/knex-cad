@@ -1,0 +1,15 @@
+T Ball on a string
+# Strings are inextensible in tension and limp otherwise, and they can run over guides, which is
+# how you build a pulley. Balls are spheres with mass that roll and collide.
+! a gantry
+C P1 W8 -2,0,0.5 x y
+C T1 W8 -2,0,2.5 x y
+R P1 T1
+C P2 W8 2,0,0.5 x y
+C T2 W8 2,0,2.5 x y
+R P2 T2
+R T1 T2
+O ball 0,0,1.5 d=25 mass=40
+Y cord T1 ball
+A P1
+A P2

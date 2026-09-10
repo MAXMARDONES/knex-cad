@@ -1,0 +1,15 @@
+T Linear slider
+# One hub on a rod is a carriage that slides AND spins. Two hubs on two parallel rods, tied
+# together, is a carriage that only slides: the second rod is what kills the rotation.
+! two parallel rails
+C R1 W8 -1,-2,0.5 x y
+C R2 W8 -1,2,0.5 x y
+C R3 W8 1,-2,0.5 x y
+C R4 W8 1,2,0.5 x y
+R R1 R2
+R R3 R4
+! the carriage: a hub on each rail, tied across
+H C1 W8 -1,0,0.5 z
+H C2 W8 1,0,0.5 z
+R C1 C2
+F C1 0,2,0 push

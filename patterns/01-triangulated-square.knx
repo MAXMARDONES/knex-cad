@@ -1,0 +1,14 @@
+T Triangulated square
+# The one rule that makes everything close: the diagonal of an n x n square is the next rod up the ladder.
+# 2U sides are blue, so the diagonal is a yellow (2 root 2). A rectangle has no legal diagonal at all.
+! square
+C A W8 0,0,0
+C B W8 2,0,0
+C C W8 2,2,0
+C D W8 0,2,0
+R A B
+R B C
+R C D
+R D A
+! the brace that stops it racking
+R A C

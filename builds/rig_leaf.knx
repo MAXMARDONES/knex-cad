@@ -1,0 +1,233 @@
+T Jazz Snow K'NEX tilt rig v2
+# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.
+# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.
+X mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0
+! base frame, 6U square at z = 1.5U so the mouse clears it
+C K1 W8 -3,-3,1.5
+C K2 W8 3,-3,1.5
+C K3 W8 3,3,1.5
+C K4 W8 -3,3,1.5
+C A1 W8 -2,-3,1.5
+C A2 W8 2,-3,1.5
+C A3 W8 2,3,1.5
+C A4 W8 -2,3,1.5
+C B1 W8 -3,-2,1.5
+C B2 W8 3,-2,1.5
+C B3 W8 3,2,1.5
+C B4 W8 -3,2,1.5
+R K1 A1
+R A1 A2
+R A2 K2
+R K4 A4
+R A4 A3
+R A3 K3
+R K1 B1
+R B1 B4
+R B4 K4
+R K2 B2
+R B2 B3
+R B3 K3
+R A1 B1
+R A2 B2
+R A3 B3
+R A4 B4
+! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens
+C F1 W8 -2,-2,1.5 x y
+C F2 W8 2,-2,1.5 x y
+C F3 W8 2,2,1.5 x y
+C F4 W8 -2,2,1.5 x y
+C RL W8 -2,0,1.5 x y
+C RR W8 2,0,1.5 x y
+R A1 F1
+R A2 F2
+R A3 F3
+R A4 F4
+! legs and feet: the feet are the only parts that touch the desk
+C G1 W8 -2,-2,0.5 x y
+C G2 W8 2,-2,0.5 x y
+C G3 W8 2,2,0.5 x y
+C G4 W8 -2,2,0.5 x y
+C GL W8 -2,0,0.5 x y
+C GR W8 2,0,0.5 x y
+R F1 G1
+R F2 G2
+R F3 G3
+R F4 G4
+R RL GL
+R RR GR
+R G1 GL
+R GL G4
+R G2 GR
+R GR G3
+! towers: one unit tall over the rails, braced by white diagonals off split rails
+C SL W8 -2,-1,1.5 x y
+C NL W8 -2,1,1.5 x y
+C SR W8 2,-1,1.5 x y
+C NR W8 2,1,1.5 x y
+R F1 SL
+R SL RL
+R RL NL
+R NL F4
+R F2 SR
+R SR RR
+R RR NR
+R NR F3
+C TL W8 -2,0,2.5 x y
+C TR W8 2,0,2.5 x y
+R RL TL
+R RR TR
+R SL TL
+R NL TL
+R SR TR
+R NR TR
+! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering
+R -2.828,0,2.5 2.828,0,2.5 grey
+C CL D1 -2.828,0,2.5 y x
+C CR D1 2.828,0,2.5 y -x
+P -2.2,0,2.5 silver
+P -1.8,0,2.5 silver
+P 1.8,0,2.5 silver
+P 2.2,0,2.5 silver
+! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings
+H HL W8 -1,0,2.5 z
+H HR W8 1,0,2.5 z
+P -1.2,0,2.5 silver
+P -0.8,0,2.5 silver
+P 0.8,0,2.5 silver
+P 1.2,0,2.5 silver
+C JL1 W8 -1,-1,3.5 x y
+C JL2 W8 -1,1,3.5 x y
+C JR1 W8 1,-1,3.5 x y
+C JR2 W8 1,1,3.5 x y
+R HL JL1
+R HL JL2
+R HR JR1
+R HR JR2
+R JL1 JL2
+R JR1 JR2
+C QL1 W8 -1,-2,3.5
+C QL2 W8 -1,2,3.5
+C QR1 W8 1,-2,3.5
+C QR2 W8 1,2,3.5
+R JL1 QL1
+R JL2 QL2
+R JR1 QR1
+R JR2 QR2
+C FB W8 0,-2,3.5
+C FF W8 0,2,3.5
+R QL1 FB
+R FB QR1
+R QL2 FF
+R FF QR2
+! roll axle: red rod end-on in the ring, carrying the bed's two hubs
+R FB FF
+! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs
+H BL W8 0,-1,3.5 z
+H BR W8 0,1,3.5 z
+P 0,-1.2,3.5 silver
+P 0,-0.8,3.5 silver
+P 0,0.8,3.5 silver
+P 0,1.2,3.5 silver
+C DL B7 0,-1,4.5 x z
+C DL2 B7 0,-1,4.5 z x
+C DR B7 0,1,4.5 x z
+C DR2 B7 0,1,4.5 z x
+R BL DL
+R BR DR
+C SM W8 0,0,4.5
+C PL W8 -1,0,4.5
+C PR W8 1,0,4.5
+C N1 W8 -1,-1,4.5
+C N2 W8 1,-1,4.5
+C N3 W8 1,1,4.5
+C N4 W8 -1,1,4.5
+R SM DL2
+R SM DR2
+R SM PL
+R SM PR
+R DL2 N1
+R DL2 N2
+R DR2 N3
+R DR2 N4
+R PL N1
+R PL N4
+R PR N2
+R PR N3
+R SM N1
+R SM N2
+R SM N3
+R SM N4
+! deck edges and the two arms that reach past the frame to carry the forks
+C DB W8 0,-2,4.5
+C DF W8 0,2,4.5
+C SL1 W8 -1,-2,4.5
+C SR1 W8 1,-2,4.5
+C SL2 W8 -1,2,4.5
+C SR2 W8 1,2,4.5
+R DL2 DB
+R DR2 DF
+R N1 SL1
+R N2 SR1
+R N3 SR2
+R N4 SL2
+R DB SL1
+R DB SR1
+R DF SL2
+R DF SR2
+C TB W8 0,-3,4.5
+C TF W8 0,3,4.5
+R DB TB
+R DF TF
+R TB SL1
+R TB SR1
+R TF SL2
+R TF SR2
+C HB W8 0,-4,4.5 x z
+C HF W8 0,4,4.5 x z
+R TB HB
+R TF HF
+! centring springs: four red rods anchored in the frame, sliding through hubs in the deck.
+! They are the only thing holding the bed level; the sim shows the rig flops without them.
+C UL1 W8 -2,-1,4.5
+C UL2 W8 -2,1,4.5
+C UR1 W8 2,-1,4.5
+C UR2 W8 2,1,4.5
+R N1 UL1
+R N4 UL2
+R N2 UR1
+R N3 UR2
+R SL -2,-1,5.5 red beam
+R NL -2,1,5.5 red beam
+R SR 2,-1,5.5 red beam
+R NR 2,1,5.5 red beam
+! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist
+R HB 0,-4,0.5 red beam
+R HF 0,4,0.5 red beam
+! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y
+C XB R3 0,-4,0.5 -x z
+C XF R3 0,4,0.5 x z
+C EB W8 0,-3,0.5
+C EF W8 0,3,0.5
+R XB EB
+R XF EF
+C ML1 G4 -1,-2,0.5 z x-y
+C MR1 G4 1,-2,0.5 z y
+C ML2 G4 -1,2,0.5 z -y
+C MR2 G4 1,2,0.5 z -x+y
+C CLm O2 -1,0,0.5 z y
+C CRm O2 1,0,0.5 z y
+R EB ML1
+R EB MR1
+R EF ML2
+R EF MR2
+R ML1 CLm
+R CLm ML2
+R MR1 CRm
+R CRm MR2
+R ML1 MR1
+R ML2 MR2
+! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.
+F DF 0,0,-3 finger front
+F DB 0,0,-3 finger back
+F PL 0,0,-3 finger left
+F PR 0,0,-3 finger right

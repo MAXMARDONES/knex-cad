@@ -1,0 +1,12 @@
+T Curved chain
+# Straight connectors and bending rods make an arc. The radius comes from how hard you bend each
+# rod: moment = EI/R at every socket, and the socket lets go at about 250 N.mm.
+# node cli.js arc --rod blue prints the table.
+! a shallow arc of blue rods on a 900 mm radius: 4.8 degrees per joint
+C A0 O2 0,0,0.5 z y
+C A1 O2 0,2,0.584 z y
+C A2 O2 0,3.968,0.917 z y
+C A3 O2 0,5.87,1.5 z y
+R A0 A1 blue beam
+R A1 A2 blue beam
+R A2 A3 blue beam

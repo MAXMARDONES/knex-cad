@@ -1,0 +1,71 @@
+<header>
+  <h1 id="title">K'NEX Rig Bench</h1>
+  <span class="sub"><span class="live" id="live"></span><span id="livetxt">embedded build</span></span>
+  <span class="pill" id="pcount">0 parts</span>
+  <span class="pill ok" id="pissues">0 issues</span>
+  <span class="pill" id="pmass">0 g</span>
+  <span class="sub" id="updated"></span>
+</header>
+<main>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="hud"><div class="tip" id="tip"></div></div>
+    <div id="stepInfo"></div>
+    <div id="bar">
+      <label>step</label>
+      <input type="range" id="step" min="0" max="0" value="0">
+      <span class="step" id="stepname">all</span>
+      <div class="opts">
+        <label><input type="checkbox" id="optJoints" checked> joints</label>
+        <label><input type="checkbox" id="optLabels"> labels</label>
+        <label><input type="checkbox" id="optProps" checked> props</label>
+        <label><input type="checkbox" id="optSpin"> spin</label>
+        <label><input type="checkbox" id="optFollow" checked> follow steps</label>
+        <label><input type="checkbox" id="optStress"> stress</label>
+      </div>
+    </div>
+  </div>
+  <aside>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="issues">Issues</button>
+      <button role="tab" aria-selected="false" data-tab="parts">Parts</button>
+      <button role="tab" aria-selected="false" data-tab="phys">Physics</button>
+      <button role="tab" aria-selected="false" data-tab="knx">Build file</button>
+    </div>
+    <div class="panel on" id="tab-issues"><div class="note">Click an issue to fly the camera to it. Errors are geometry that cannot be built; warnings are things to double-check.</div><div id="issues"></div></div>
+    <div class="panel" id="tab-parts">
+      <table id="parts"></table>
+      <div class="note" style="margin-top:12px">Rod bending stiffness, tip load on a cantilever (3EI/L³, E 2.8 GPa std, 0.4 GPa flexi, I 45 mm⁴ estimate)</div>
+      <table id="stiff"></table>
+      <div class="note" id="joints"></div>
+    </div>
+    <div class="panel" id="tab-phys">
+      <div class="row">
+        <button class="act primary" id="physRun">Run</button>
+        <button class="act" id="physReset">Reset</button>
+        <select id="physSurface" class="act">
+          <option value="mousepad-cloth">cloth mouse pad</option>
+          <option value="mousepad-rubber">rubber mouse pad</option>
+          <option value="desk-wood">varnished wood</option>
+          <option value="desk-laminate">laminate</option>
+          <option value="glass">glass</option>
+        </select>
+      </div>
+      <div class="row"><label style="font-family:var(--mono);font-size:12px;color:var(--muted)">speed</label>
+        <input type="range" id="physSpeed" min="0.05" max="1" step="0.05" value="1" style="flex:1;accent-color:var(--accent)">
+        <span id="physSpeedVal" style="font-family:var(--mono);font-size:12px">1.00x</span></div>
+      <div class="note">Hold a button to press that point. Gravity, bearing friction, rod bending and desk friction are all live.</div>
+      <div class="row" id="physLoads"></div>
+      <table id="physJoints"></table>
+      <table id="physBeams" style="margin-top:10px"></table>
+      <pre id="physOut" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--muted);margin-top:10px"></pre>
+    </div>
+    <div class="panel" id="tab-knx">
+      <div class="row"><button class="act primary" id="apply">Apply</button><button class="act" id="save" hidden>Save to shared</button><span class="note" id="savemsg"></span></div>
+      <textarea id="knx" spellcheck="false"></textarea>
+    </div>
+  </aside>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>/*__ENGINE__*/</script>
+<script>var EMBEDDED_KNX = /*__BUILD__*/"";</script>
