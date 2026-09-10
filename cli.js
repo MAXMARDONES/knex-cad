@@ -43,6 +43,149 @@ if (file === "log") {                                    // post to a running li
   req.end(body);
   return;
 }
+if (file === "bridge") {                                 /* pick two points and a way of getting between them */
+  var pos = args.filter(function (a) { return !isOpt(a); });
+  if (pos.length < 4) {
+    console.error("usage: node cli.js bridge build.knx A B [--style truss|line|arch|slide] [--step 1|2|4]");
+    console.error("                    [--rod colour] [--segments n] [--legs] [--prefix BR] [--append]");
+    process.exit(2);
+  }
+  function o(f, d) { var i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; }
+  function flag(f) { return args.indexOf(f) >= 0; }
+  var src = pos[1], b = KNEX.build(fs.readFileSync(src, "utf8"));
+  var A = b.byName[pos[2]], B = b.byName[pos[3]];
+  if (!A || !B) { console.error("cannot find " + (A ? pos[3] : pos[2]) + " in " + src); process.exit(1); }
+  var V2 = KNEX.V, U = b.U, ua = V2.mul(A.pos, 1 / U), ub = V2.mul(B.pos, 1 / U);
+  var style = o("--style", "truss"), prefix = o("--prefix", "BR"), lines = [], note = "", firstDir = null, lastDir = null;
+  // The path search works on whole units. If both ends sit off the lattice by the same amount, shift the
+  // whole result back onto them; if they differ, say so rather than generating something that misses.
+  var fa = V2.sub(ua, ua.map(Math.round)), fb = V2.sub(ub, ub.map(Math.round));
+  var shift = [0, 0, 0];
+  if (V2.norm(fa) > 1e-6 || V2.norm(fb) > 1e-6) {
+    if (V2.dist(fa, fb) > 1e-6) {
+      console.error(pos[2] + " and " + pos[3] + " sit off the lattice by different amounts (" +
+        V2.mul(fa, U).map(function (v) { return v.toFixed(1); }).join(",") + " and " +
+        V2.mul(fb, U).map(function (v) { return v.toFixed(1); }).join(",") + " mm).");
+      console.error("Nothing regular can span that. Move one of them onto a whole number of units.");
+      process.exit(1);
+    }
+    shift = fa;
+    ua = ua.map(Math.round); ub = ub.map(Math.round);
+    console.log("# both ends sit " + V2.mul(fa, U).map(function (v) { return v.toFixed(1); }).join(",") +
+                " mm off the lattice; the whole span is shifted to match.\n");
+  }
+  function place(line) {                                    // apply that shift to every generated coordinate
+    if (V2.norm(shift) < 1e-9) return line;
+    var t = line.split(" ");
+    if (t[0] === "C" || t[0] === "H") { var p = t[3].split(",").map(Number); t[3] = V2.add(p, shift).map(function (v) { return Number(v.toFixed(4)); }).join(","); }
+    return t.join(" ");
+  }
+
+  if (style === "arch") {
+    var ar = KNEX.gen.arch(ua, ub, { rod: o("--rod", "blue"), segments: o("--segments") ? Number(o("--segments")) : 0, prefix: prefix, down: flag("--down") });
+    if (!ar.ok) { console.error(ar.why); process.exit(1); }
+    lines = ar.lines
+      .filter(function (l) { return l.indexOf("C " + prefix + "0 ") !== 0 && l.indexOf("C " + prefix + ar.segments + " ") !== 0; })
+      .map(function (l) { return l.split(" ").map(function (t) { return t === prefix + "0" ? pos[2] : t === prefix + String(ar.segments) ? pos[3] : t; }).join(" "); });
+    note = ar.segments + " " + ar.colour + " rods on a " + (ar.radius * U).toFixed(0) + " mm radius, rising " +
+           (ar.rise * U).toFixed(0) + " mm, turning " + ar.turn.toFixed(1) + " deg at each joint";
+    firstDir = V2.unit(V2.sub(ar.pts[1], ar.pts[0])); lastDir = V2.unit(V2.sub(ar.pts[ar.pts.length - 2], ar.pts[ar.pts.length - 1]));
+    if (ar.moment > KNEX.DIMS.socketMoment) {
+      console.log("# WARNING: bending each rod that far puts " + ar.moment.toFixed(0) + " N.mm into every socket, and they");
+      console.log("# let go at about " + KNEX.DIMS.socketMoment + " N.mm (estimate). Use more segments or a longer rod.\n");
+    }
+    if (flag("--legs")) lines = lines.concat(KNEX.gen.legs(ar.pts, { prefix: prefix + "L", nodePrefix: prefix, every: Number(o("--every", 2)) }));
+  } else if (style === "slide") {
+    var d = V2.sub(ub, ua), Ld = V2.norm(d), fit = KNEX.LADDER.filter(function (l) { return Math.abs(l.c2c / U - Ld) < 0.02; })[0];
+    if (!fit) { console.error("a slide needs one rod end to end, and " + Ld.toFixed(3) + " U is not a rod length. node cli.js span " + pos[2] + " " + pos[3]); process.exit(1); }
+    var side = Math.abs(V2.unit(d)[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1];
+    lines = ["C " + prefix + "a W8 " + V2.add(ua, side).join(","), "C " + prefix + "b W8 " + V2.add(ub, side).join(","),
+             "R " + pos[2] + " " + pos[3] + " " + fit.color, "R " + prefix + "a " + prefix + "b " + fit.color,
+             "H " + prefix + "c1 W8 " + V2.add(V2.mul(V2.add(ua, ub), 0.5), [0, 0, 0]).join(",") + " z",
+             "H " + prefix + "c2 W8 " + V2.add(V2.mul(V2.add(ua, ub), 0.5), side).join(",") + " z",
+             "R " + prefix + "c1 " + prefix + "c2"];
+    note = "two parallel " + fit.color + " rails one unit apart, with a carriage on both: it slides and cannot spin";
+    firstDir = V2.unit(d); lastDir = V2.mul(firstDir, -1);
+  } else {
+    var step = Number(o("--step", 2));
+    var r = KNEX.gen.path(ua, ub, { box: Number(o("--box", 14)), uniform: style === "truss" ? step : 0 });
+    if (!r.ok && style === "truss") [1, 2, 4].filter(function (n) { return n !== step; }).some(function (n) {
+      var t2 = KNEX.gen.path(ua, ub, { box: Number(o("--box", 14)), uniform: n });
+      if (t2.ok) { r = t2; step = n; return true; } return false;
+    });
+    if (!r.ok) { console.error(r.why); process.exit(1); }
+    lines = KNEX.gen.truss(r.steps, { style: style, prefix: prefix, uniform: style === "truss" ? step : 0 });
+    lines = lines.filter(function (l) { return l.indexOf("C " + prefix + "a0 ") !== 0 && l.indexOf("C " + prefix + "a" + r.steps.length + " ") !== 0; })
+      .map(function (l) { return l.split(" ").map(function (t) { return t === prefix + "a0" ? pos[2] : t === prefix + "a" + r.steps.length ? pos[3] : t; }).join(" "); });
+    note = r.steps.length + " rods" + (style === "truss" ? " in " + step + "-unit steps, laced into a beam" : "") + ": " + r.steps.map(function (s) { return s.colour; }).join(", ");
+    firstDir = V2.unit(V2.sub(r.steps[0].to, r.steps[0].from));
+    lastDir = V2.unit(V2.sub(r.steps[r.steps.length - 1].from, r.steps[r.steps.length - 1].to));
+    if (flag("--legs")) {
+      var pts = [r.steps[0].from].concat(r.steps.map(function (s) { return s.to; }));
+      lines = lines.concat(KNEX.gen.legs(pts, { prefix: prefix + "L", nodePrefix: prefix + "a", every: Number(o("--every", 2)) }));
+    }
+  }
+  // will the two ends actually take it?
+  [[A, firstDir, pos[2]], [B, lastDir, pos[3]]].forEach(function (e) {
+    if (!e[1]) return;
+    if (Math.abs(V2.dot(e[1], e[0].n)) > 0.08)
+      console.log("# " + e[2] + " lies in the " + KNEX.V.axisName(e[0].n) + " plane and this arrives along " +
+                  KNEX.V.axisName(e[1]) + ", so it cannot seat there.\n# Make " + e[2] + " a 3D pair (two B7 at that point, planes at 90) or move it.\n");
+  });
+  var out = ["! bridge " + pos[2] + " to " + pos[3] + ", " + style].concat(lines.map(place));
+  console.log(out.join("\n"));
+  console.log("\n# " + note);
+  if (flag("--append")) {
+    fs.appendFileSync(src, "\n" + out.join("\n") + "\n");
+    var again = KNEX.build(fs.readFileSync(src, "utf8"));
+    console.log("\nappended to " + src + ": " + again.errors + " errors, " + again.warnings + " warnings");
+    process.exit(again.errors ? 1 : 0);
+  }
+  console.log("# paste it in, or re-run with --append");
+  process.exit(0);
+}
+if (file === "reach" || file === "ik") {                 // what can this thing reach, and how far must each joint turn
+  var pos = args.filter(function (a) { return !isOpt(a); });
+  if (!pos[1]) { console.error("usage: node cli.js reach build.knx [--tip NAME]  |  node cli.js ik build.knx --target x,y,z [--tip NAME] [--lever mm]"); process.exit(2); }
+  function o(f, d) { var i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; }
+  var b = KNEX.build(fs.readFileSync(pos[1], "utf8"));
+  if (b.errors) { console.error(b.errors + " errors in the build; fix them first"); process.exit(1); }
+  KNEX.bodies(b);
+  var W = KNEX.phys.world(b, {});
+  var tip = o("--tip");
+  if (file === "reach") {
+    var ws = KNEX.kin.workspace(W, { tip: tip, samples: Number(o("--samples", 4000)) });
+    if (!ws.ok) { console.log(ws.why); process.exit(0); }
+    console.log(b.title + ": " + ws.dof + " degrees of freedom out to " + ws.chain.tipName);
+    ws.chain.links.forEach(function (l, i) {
+      console.log("  " + (i + 1) + ". " + l.joint.name.padEnd(12) + "turns about " + KNEX.V.axisName(l.joint.axis) +
+                  " at " + KNEX.V.mul(l.joint.anchor, 1000).map(function (v) { return v.toFixed(0); }).join(",") + " mm");
+    });
+    console.log("\nwhat the tip can reach, sampling every joint through a full turn:");
+    console.log("  envelope   " + ws.size.map(function (v) { return v.toFixed(0); }).join(" x ") + " mm");
+    console.log("  x " + ws.min[0].toFixed(0) + " to " + ws.max[0].toFixed(0) + "   y " + ws.min[1].toFixed(0) + " to " + ws.max[1].toFixed(0) + "   z " + ws.min[2].toFixed(0) + " to " + ws.max[2].toFixed(0) + " mm");
+    console.log("  furthest from the first joint: " + ws.reach.toFixed(0) + " mm");
+    console.log("\nThis ignores collisions and end stops: it is what the geometry allows, not what the parts");
+    console.log("will let you do. Run the simulation to find out which of it you can actually use.");
+    process.exit(0);
+  }
+  var t = (o("--target") || "").split(",").map(Number);
+  if (t.length !== 3 || !t.every(isFinite)) { console.error("--target x,y,z in mm"); process.exit(2); }
+  var r = KNEX.kin.solve(W, { tip: tip, target: t, tol: Number(o("--tol", 1)) });
+  if (r.why) { console.log(r.why); process.exit(0); }
+  var lever = Number(o("--lever", 50));
+  console.log(b.title + ": reaching " + t.join(",") + " mm with " + r.chain.links.length + " joints");
+  console.log(r.ok ? "  reachable, within " + r.err.toFixed(1) + " mm"
+                   : "  NOT reachable: the closest it gets is " + r.err.toFixed(1) + " mm short, at " + r.tip.map(function (v) { return v.toFixed(0); }).join(","));
+  console.log("\njoint            turn      actuator travel at a " + lever + " mm lever");
+  r.joints.forEach(function (j) {
+    console.log("  " + j.name.padEnd(14) + (j.deg.toFixed(1) + " deg").padStart(9) + "      " +
+                (Math.abs(j.deg) * Math.PI / 180 * lever).toFixed(1) + " mm");
+  });
+  console.log("\nThe travel column is the arc a lever of that radius sweeps: it is what a linear actuator");
+  console.log("driving that joint has to deliver. Collisions are not checked here.");
+  process.exit(0);
+}
 if (file === "props") {                                  // what you can put on the table with the model
   console.log("Props. Real dimensions in mm, real mass in grams, and friction for that material on a desk.");
   console.log("Use one by name: `X phone 0,0,3`, or give your own size: `X thing 0,0,3 90,60,20 mass=140`.\n");
@@ -136,7 +279,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js props  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\"  |  node cli.js replay run.jsonl"); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js props  |  node cli.js bridge b.knx A B  |  node cli.js reach b.knx  |  node cli.js ik b.knx --target x,y,z  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\"  |  node cli.js replay run.jsonl"); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");

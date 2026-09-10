@@ -33,6 +33,7 @@ Bigger builds you can open in the bench and take apart.
 | ![](patterns/demo-modules.png) | **`builds/demo_modules.knx`** — one tower module placed four times with `USE`, with `Z` ports saying where the deck attaches. `node cli.js ports` reports which gaps a rod already spans and what to bridge the rest with. |
 | ![](patterns/demo-props.png) | **`builds/demo_props.knx`** — the prop catalogue on a table: a phone, a book, a steel counterweight, a full water bottle, a can, three balls and a coin, each with its real size, mass, friction and shape. A steel ball is thrown at the tower the moment you press run. |
 | ![](patterns/demo-pole.png) | **`builds/demo_pole.knx`** — a metre of K'NEX pole with `FLEX` on, so every rod bends. It sags 34 mm under its own weight and whips when you wave the butt. Grab the tip with the mouse or your hand. |
+| ![](patterns/demo-bridge.png) | **`builds/demo_bridge.knx`** — two hand-written piers and a generated arch. `node cli.js bridge b.knx LT RT --style arch --rod blue --segments 6` solves the circle whose six 2-unit chords span the gap, and tells you the rise, the turn per joint and the moment it puts into every socket. |
 | ![](../docs/hero.png) | **`builds/rig.knx`** — the worked example: a two-axis tilt platform that stands over a mouse and pushes it. Sixteen build steps, a compliant fork, four zigzag centring springs. |
 
 ## Part catalogue

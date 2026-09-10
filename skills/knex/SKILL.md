@@ -104,6 +104,22 @@ passes what the plastic holds, live, with the event reported.
 Directional joint capacity, all estimates: about 60 N pushing a rod into its socket, 15 N pulling it out,
 4 N prying it out of the connector's plane. Keep loads in the plane of the connector.
 
+## Before you place a part
+
+```bash
+knex-cad reach <build>                         # the joint chain, and what the end of it can reach
+knex-cad ik <build> --target x,y,z --lever 75  # joint angles, and the actuator stroke that needs
+knex-cad bridge <build> A B --style arch       # generate the span: line, truss, arch or slide
+```
+
+For anything with joints, `reach` and `ik` settle whether the design is worth building before you build
+it: the envelope tells you what it can get to, and the travel column turns a pose into the stroke an
+actuator has to deliver. Neither checks collisions; take the pose to `sim` for that.
+
+`bridge` writes the structure between two placed connectors. It refuses ends that sit off the lattice by
+different amounts, warns when an arch would overload the sockets, and tells you when a span arrives along
+a connector's normal and therefore cannot seat. See `docs/GENERATIVE.md`.
+
 ## Springs, because there are none in the box
 
 `node cli.js spring` prints the stiffness of every configuration. The short version: a long rod socketed at

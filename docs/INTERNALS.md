@@ -24,6 +24,7 @@ the renderers and the viewer. Find your change in the table, then read the recip
 | add a **contact shape** | `engine/12_collide.js` | `KNEX.phys.collide`, which runs every step; box, sphere and cylinder live there |
 | add a **prop** to the catalogue | `engine/01_catalog.js` | `PROPS`: shape, size mm, mass g, friction, colour, and a one-line note |
 | make a build **bend** instead of being rigid | put `FLEX` at the top of the `.knx` | every rod becomes a beam; see `builds/demo_pole.knx` |
+| add a **way of bridging two points** | `engine/15_gen.js` | a style is a function from two lattice points to `.knx` lines; the CLI's `bridge` branch picks between them |
 | add a **CLI command** | `cli.js` | one `if (file === "…")` branch; put anything long in `scripts/` |
 | change the **3D look** of a part | `viewer/03b_parts.js` | `connGeo`, `rodGeo` |
 | add a **viewer panel or control** | `viewer/02_body.html` for the markup, `viewer/05_ui.js` to wire it | and `viewer/01_head.html` for the styling |
@@ -75,6 +76,8 @@ After any change under `engine/`, run `./build.sh` or the CLI will still be runn
 | `engine/11_solver.js` | one timestep: forces, sequential impulses, contacts, failure, `report` |
 | `engine/12_collide.js` | contacts, regenerated every step, against the desk, boxes and spheres |
 | `engine/13_mech.js` | tendons, motors, gears, tan-clip locks and balls, built onto the world |
+| `engine/14_kin.js` | the joint chain, forward kinematics, inverse kinematics by CCD, and the reach envelope |
+| `engine/15_gen.js` | generation on the lattice: A* pathfinding, truss lacing, solved arches, legs |
 | `viewer/01_head.html` | tokens and layout for both themes |
 | `viewer/02_body.html` | the markup: tabs, panels, controls |
 | `viewer/03_scene.js` | camera, orbit, lights, the table, the animation frame |

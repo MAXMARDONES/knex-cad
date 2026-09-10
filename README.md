@@ -278,6 +278,40 @@ against a stubbed browser, so a throw that would freeze the page is caught befor
 
 ---
 
+## Solving and generating
+
+Two questions come before you place a part: *can this reach where I need it to*, and *how do I get from
+here to there*. Both have standard answers, and on the lattice they have exact ones.
+
+```bash
+node cli.js reach builds/rig.knx                        # the joint chain, and what the tip can reach
+node cli.js ik builds/rig.knx --target 30,60,150        # joint angles, and the actuator stroke they need
+node cli.js bridge b.knx A B --style arch --segments 10 # generate the span between two points
+```
+
+`ik` reports the **actuator travel at a given lever radius**, which turns a pose you want into a stroke you
+have to build. It says how far short it got rather than pretending, and it ignores collisions on purpose:
+take the pose to the simulation to find out how much of that envelope you can use.
+
+`bridge` takes two placed connectors and a technique:
+
+| style | what it makes |
+|---|---|
+| `line` | the fewest rods that get there, using every legal move |
+| `truss` | uniform steps with a second chord alongside, laced between: a real beam |
+| `arch` | a solved circular arc of bending rods, with the rise that follows from the rod length |
+| `slide` | two parallel rails with a carriage: it slides and cannot spin |
+
+It checks what it hands you. Ends off the lattice by the same amount get the whole span shifted to match;
+ends off by different amounts are refused with the reason. An arch reports the moment it puts into every
+socket and warns when that is past what they hold. And if the span arrives along a connector's normal it
+tells you which end cannot seat it and what to change.
+
+Full reasoning, including why a truss needs uniform steps and why an arch is solved rather than sampled:
+[docs/GENERATIVE.md](docs/GENERATIVE.md).
+
+---
+
 ## Design by module
 
 A base, a shoulder, an arm, a gripper: each is a `MOD` you get standing on its own, then place with `USE`.
@@ -416,6 +450,8 @@ mkdir -p ~/.codex/prompts && cp .codex/prompts/*.md ~/.codex/prompts/
 
 The deeper reading, for any agent:
 
+- **[docs/GENERATIVE.md](docs/GENERATIVE.md)** — kinematics and generation: what a chain can reach, the
+  stroke each joint needs, and the four ways of spanning a gap.
 - **[docs/INTERNALS.md](docs/INTERNALS.md)** — where to change things. Every file mapped to what it owns,
   a table of "I want to add a part / a statement / a physics element / a check, go here", the data shapes
   you will be handling, and the things that will surprise you.
@@ -492,6 +528,8 @@ certified values. `node cli.js parts` says which is which.
 - [x] Live mode: hot reload, and a session feed of what the agent is doing
 - [x] Hand tracking: pinch to grab, pull, twist and push with two hands
 - [x] Props with real mass, friction and collision shapes, and `FLEX` for things that should bend
+- [x] Kinematics: reach envelope, inverse kinematics, and the actuator stroke a pose needs
+- [x] Generation: pathfinding, trusses, solved arches and slides between any two points
 - [ ] Finite-element pass, for the force in every member of a rigid truss
 - [ ] Micro and Jumbo K'NEX ladders
 - [ ] Export to STL and to LDraw-style part lists

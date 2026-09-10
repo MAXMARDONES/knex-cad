@@ -66,9 +66,12 @@ KNEX.phys.world = function (s, opts) {
     var pa = s.parts.filter(function (p) { return p.ref === A; })[0], pb = s.parts.filter(function (p) { return p.ref === B; })[0];
     var ja = rod.joints.filter(function (x) { return x.conn === sp.a; })[0];
     var jb = rod.joints.filter(function (x) { return x.conn === sp.b; })[0];
-    var dirA = ja && ja.slot != null ? A.slotDir(ja.slot) : V.unit(V.sub(B.pos, A.pos));
-    var dirB = jb && jb.slot != null ? B.slotDir(jb.slot) : V.unit(V.sub(A.pos, B.pos));
-    return { A: bodies[pa.body], B: bodies[pb.body], pa: V.mul(A.pos, MM), pb: V.mul(B.pos, MM), dirA: dirA, dirB: dirB,
+    /* The zero-force state is how the thing was built, not how the sockets point. A rod bent into an arch
+       is pre-stressed, and the checker says so, but the simulation must not try to straighten it. */
+    var dirA = V.unit(V.sub(B.pos, A.pos)), dirB = V.unit(V.sub(A.pos, B.pos));
+    var sockA = ja && ja.slot != null ? A.slotDir(ja.slot) : dirA;
+    var preBend = V.angleDeg(sockA, dirA);                  // how far it was persuaded when you built it
+    return { A: bodies[pa.body], B: bodies[pb.body], pa: V.mul(A.pos, MM), pb: V.mul(B.pos, MM), dirA: dirA, dirB: dirB, preBend: preBend,
              L: sp.c2c * MM, flexi: sp.flexi, name: sp.a + "-" + sp.b, rod: sp.rod, color: rod.color,
              slides: sp.slides, EA: sp.EA, Pcr: sp.Pcr, kLat: sp.kLat * 1000, kBend: sp.kBend / 1000, span: sp.span * MM,
              kAxial: sp.slides ? 0 : sp.EA / (sp.c2c * MM), F: 0, Flat: 0 };

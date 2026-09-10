@@ -1,0 +1,28 @@
+T Generated span
+# The two piers were written by hand. Everything between them was generated:
+#   node cli.js bridge builds/demo_bridge.knx LT RT --style arch --rod blue --rod blue --segments 6 --append
+# Try the other techniques on the same two points: --style truss, line, slide.
+# The pier tops lie in the xz plane, which is the plane the arch springs in. A connector is a plane, and
+# an arch can only land on one that contains it.
+! two piers
+C LA W8 -4,0,0.5 y x
+C LT W8 -4,0,4.5 y x
+R LA LT
+C RA W8 4,0,0.5 y x
+C RT W8 4,0,4.5 y x
+R RA RT
+A LA
+A RA
+
+! bridge LT to RT, arch
+C BR1 W8 -3.3908,0,6.405
+C BR2 W8 -1.9367,0,7.7781
+C BR3 W8 0,0,8.2773
+C BR4 W8 1.9367,0,7.7781
+C BR5 W8 3.3908,0,6.405
+R LT BR1 blue beam
+R BR1 BR2 blue beam
+R BR2 BR3 blue beam
+R BR3 BR4 blue beam
+R BR4 BR5 blue beam
+R BR5 RT blue beam
