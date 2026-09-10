@@ -29,6 +29,18 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("shotBtn").addEventListener("click", function () {
+  var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore
+  renderer.setSize(w * scale, h * scale, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  updateCamera(); renderer.render(scene, camera);
+  var url = canvas.toDataURL("image/png");
+  renderer.setSize(w, h, false); camera.updateProjectionMatrix(); updateCamera(); renderer.render(scene, camera);
+  var a = document.createElement("a");
+  a.download = ((MODEL && MODEL.title) || "knex").replace(/[^\w-]+/g, "-").toLowerCase() + "-" + Date.now() + ".png";
+  a.href = url; a.click();
+  if (window.toast) toast("saved " + a.download);
+});
 $("optStress").addEventListener("change", function (e) {
   STRESS.on = e.target.checked; $("legend").classList.toggle("on", STRESS.on); stressApply();
 });

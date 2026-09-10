@@ -80,7 +80,8 @@ node cli.js instructions builds/rig.knx docs/instructions     # a sheet per step
 knex-cad view                                                 # build the 3D bench and open it
 ```
 
-Views for `render`: `iso iso2 front back left right top low`. Masking: `--hide props,joints,rods,conns,spacers,loads`.
+Views: `iso iso2 front back left right top low`. Masking: `hide=props,joints,rods,conns,spacers,loads`
+for `shot`, `--hide ...` for `render`. Add `stress=1 run=1.5` to a shot to show it under load.
 The renderer needs no browser, so it is the fastest way to look at something. The bench (`view`) is for
 when you want to push the thing: drag any part with the cursor and a force is applied there, live. The bench (`view`) is for
 when you want to push the thing: drag any part with the cursor and a force is applied there, live.

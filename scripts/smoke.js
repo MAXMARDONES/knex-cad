@@ -80,8 +80,24 @@ step("the physics steps", function () {
 step("bending rods reshape", function () { counts.warn = 0; ctx.beamsApply(); if (counts.warn) throw new Error(counts.lastWarn); });
 step("the stress view applies", function () { ctx.STRESS.on = true; ctx.stressApply(); ctx.STRESS.on = false; });
 step("the readout renders", function () { ctx.physReadout(); });
-step("every build step draws", function () {
-  for (var v = 0; v <= ctx.MODEL.steps.length; v++) { ctx.showStep(v); }
+step("every build step draws, and hides the later ones", function () {
+  var el = ctx.document.getElementById("step"), n = ctx.MODEL.steps.length;
+  function visible() { var k = 0; ctx.PARTS.forEach(function (p) { if (p.visible) k++; }); return k; }
+  el.max = String(n);
+  el.value = String(n); ctx.applyFilters(); var all = visible();
+  var prev = 0;
+  for (var v = 1; v <= n; v++) {
+    el.value = String(v); ctx.applyFilters(); ctx.showStep(v);
+    var k = visible(), late = 0;
+    ctx.PARTS.forEach(function (p) { if (p.visible && p.userData && p.userData.step != null && p.userData.step > v - 1) late++; });
+    if (late) throw new Error("step " + v + " leaves " + late + " part(s) from later steps visible");
+    if (k < prev) throw new Error("step " + v + " shows fewer parts than step " + (v - 1));
+    prev = k;
+  }
+  if (prev !== all) throw new Error("the last step does not show the whole model");
+  el.value = String(1); ctx.applyFilters();
+  if (visible() >= all) throw new Error("step 1 shows the whole model: the step filter is not hiding anything");
+  el.value = String(n); ctx.applyFilters();
 });
 step("the animation frame runs", function () { ctx.animate(); });
 step("declared forces are pressable", function () {
@@ -89,10 +105,13 @@ step("declared forces are pressable", function () {
   if (!loads.length) return;
   loads[0].gain = 1;
   for (var i = 0; i < 40; i++) ctx.KNEX.phys.step(ctx.PHYS.W, ctx.PHYS.dt, {});
-  if (!isFinite(ctx.PHYS.W.bodies[1].x[0])) throw new Error("a body went non-finite while a force was applied");
+  ctx.PHYS.W.bodies.forEach(function (b, i) {
+    if (!isFinite(b.x[0]) || !isFinite(b.x[1]) || !isFinite(b.x[2])) throw new Error("body " + i + " went non-finite under load");
+  });
 });
 step("cursor drag applies a force", function () {
   var b = ctx.PHYS.W.bodies.filter(function (x) { return !x.fixed; })[0];
+  if (!b) return;                                        // a build with nothing that moves: nothing to drag
   ctx.DRAG.on = true; ctx.DRAG.body = b; ctx.DRAG.local = [0, 0, 0]; ctx.DRAG.target = [b.x[0] + 0.02, b.x[1], b.x[2]];
   var inp = ctx.dragInput();
   if (!inp.loads || !inp.loads.length) throw new Error("dragInput produced no load");

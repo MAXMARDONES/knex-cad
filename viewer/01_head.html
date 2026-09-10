@@ -25,6 +25,7 @@
   #bar input[type=range] { flex:1; accent-color:var(--accent); }
   #bar label { font-family:var(--mono); font-size:12px; color:var(--muted); white-space:nowrap; }
   #bar .step { font-weight:700; min-width:180px; }
+  #bar button.act { padding:4px 10px; font-size:12px; }
   #stepInfo { position:absolute; left:12px; top:12px; max-width:min(560px,60%); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; line-height:1.5; }
   #stepInfo:empty { display:none; }
   #stepInfo b { font-weight:700; }
@@ -36,6 +37,12 @@
   #legend .bar { height:9px; width:150px; border-radius:2px; margin:5px 0 3px;
                  background:linear-gradient(90deg,#2A6CB6,#2E9E4F,#F2C51D,#D9302C,#781414); }
   #legend .ends { display:flex; justify-content:space-between; color:var(--muted); }
+  /* shot mode: nothing but the model, so a render can be captured cleanly */
+  body.shot header, body.shot aside, body.shot #bar, body.shot #hud, body.shot #toast, body.shot #legend { display:none !important; }
+  body.shot { grid-template-rows:1fr; }
+  body.shot main { grid-template-columns:1fr; }
+  body.shot #stepInfo { left:50%; transform:translateX(-50%); top:auto; bottom:18px; text-align:center; max-width:80%; }
+  body.shot.bare #stepInfo { display:none; }
   aside { border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; min-height:0; }
   .tabs { display:flex; border-bottom:1px solid var(--line); }
   .tabs button { flex:1; background:none; border:0; border-bottom:2px solid transparent; padding:8px 4px; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }

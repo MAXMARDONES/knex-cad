@@ -1,8 +1,12 @@
 # Pattern library
 
-Twelve small builds, each one technique, each validated by the checker and rendered from the same file.
-Copy a block into your own build and change the coordinates. Regenerate everything with
-`./scripts/patterns.sh`.
+Twelve small builds, each one technique, each validated by the checker and rendered in 3D from the same
+file. Copy a block into your own build and change the coordinates.
+
+```bash
+./scripts/patterns.sh      # validate them all
+./scripts/gallery.sh       # re-render every image in the repo
+```
 
 | pattern | what it teaches | file |
 |---|---|---|
@@ -21,7 +25,8 @@ Copy a block into your own build and change the coordinates. Regenerate everythi
 
 ## Part catalogue
 
-Face-on drawings with the socket numbering, the rod ladder, and what each joint lets move.
+These stay as drawings rather than renders, because the socket numbering is the point: a photograph of a
+connector cannot tell you which slot is 3.
 
 | | |
 |---|---|

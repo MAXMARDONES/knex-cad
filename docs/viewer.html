@@ -25,6 +25,7 @@
   #bar input[type=range] { flex:1; accent-color:var(--accent); }
   #bar label { font-family:var(--mono); font-size:12px; color:var(--muted); white-space:nowrap; }
   #bar .step { font-weight:700; min-width:180px; }
+  #bar button.act { padding:4px 10px; font-size:12px; }
   #stepInfo { position:absolute; left:12px; top:12px; max-width:min(560px,60%); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; line-height:1.5; }
   #stepInfo:empty { display:none; }
   #stepInfo b { font-weight:700; }
@@ -36,6 +37,12 @@
   #legend .bar { height:9px; width:150px; border-radius:2px; margin:5px 0 3px;
                  background:linear-gradient(90deg,#2A6CB6,#2E9E4F,#F2C51D,#D9302C,#781414); }
   #legend .ends { display:flex; justify-content:space-between; color:var(--muted); }
+  /* shot mode: nothing but the model, so a render can be captured cleanly */
+  body.shot header, body.shot aside, body.shot #bar, body.shot #hud, body.shot #toast, body.shot #legend { display:none !important; }
+  body.shot { grid-template-rows:1fr; }
+  body.shot main { grid-template-columns:1fr; }
+  body.shot #stepInfo { left:50%; transform:translateX(-50%); top:auto; bottom:18px; text-align:center; max-width:80%; }
+  body.shot.bare #stepInfo { display:none; }
   aside { border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; min-height:0; }
   .tabs { display:flex; border-bottom:1px solid var(--line); }
   .tabs button { flex:1; background:none; border:0; border-bottom:2px solid transparent; padding:8px 4px; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }
@@ -90,6 +97,7 @@
         <label><input type="checkbox" id="optFollow" checked> follow steps</label>
         <label><input type="checkbox" id="optStress"> stress</label>
         <label><input type="checkbox" id="optDrag" checked> drag to push</label>
+        <button class="act" id="shotBtn" title="save this view as a PNG">save image</button>
       </div>
     </div>
   </div>
@@ -1294,7 +1302,7 @@ KNEX.phys.mech = function (W, s) {
   return W;
 };
 </script>
-<script>var EMBEDDED_KNX = "T Jazz Snow K'NEX tilt rig v2\n# U = 37.5 mm, z up, desk at z = 0. The frame stands on legs over the mouse, which sits at the origin.\n# Push the bed with your fingers at the four F lines; the two fork rods carry the tilt down to the collar.\nX mouse 0,0,0.507 62,117,38 #3B4252 mass=85 pad=1.5,0\n! base frame, 6U square at z = 1.5U so the mouse clears it\nC K1 W8 -3,-3,1.5\nC K2 W8 3,-3,1.5\nC K3 W8 3,3,1.5\nC K4 W8 -3,3,1.5\nC A1 W8 -2,-3,1.5\nC A2 W8 2,-3,1.5\nC A3 W8 2,3,1.5\nC A4 W8 -2,3,1.5\nC B1 W8 -3,-2,1.5\nC B2 W8 3,-2,1.5\nC B3 W8 3,2,1.5\nC B4 W8 -3,2,1.5\nR K1 A1\nR A1 A2\nR A2 K2\nR K4 A4\nR A4 A3\nR A3 K3\nR K1 B1\nR B1 B4\nR B4 K4\nR K2 B2\nR B2 B3\nR B3 K3\nR A1 B1\nR A2 B2\nR A3 B3\nR A4 B4\n! cross rails in the vertical planes x = +-2, hung off the frame by hidden greens\nC F1 W8 -2,-2,1.5 x y\nC F2 W8 2,-2,1.5 x y\nC F3 W8 2,2,1.5 x y\nC F4 W8 -2,2,1.5 x y\nC RL W8 -2,0,1.5 x y\nC RR W8 2,0,1.5 x y\nR A1 F1\nR A2 F2\nR A3 F3\nR A4 F4\n! legs and feet: the feet are the only parts that touch the desk\nC G1 W8 -2,-2,0.5 x y\nC G2 W8 2,-2,0.5 x y\nC G3 W8 2,2,0.5 x y\nC G4 W8 -2,2,0.5 x y\nC GL W8 -2,0,0.5 x y\nC GR W8 2,0,0.5 x y\nR F1 G1\nR F2 G2\nR F3 G3\nR F4 G4\nR RL GL\nR RR GR\nR G1 GL\nR GL G4\nR G2 GR\nR GR G3\n! towers: one unit tall over the rails, braced by white diagonals off split rails\nC SL W8 -2,-1,1.5 x y\nC NL W8 -2,1,1.5 x y\nC SR W8 2,-1,1.5 x y\nC NR W8 2,1,1.5 x y\nR F1 SL\nR SL RL\nR RL NL\nR NL F4\nR F2 SR\nR SR RR\nR RR NR\nR NR F3\nC TL W8 -2,0,2.5 x y\nC TR W8 2,0,2.5 x y\nR RL TL\nR RR TR\nR SL TL\nR NL TL\nR SR TR\nR NR TR\n! pitch axle: a grey rod capped at both ends, riding in the two tower hubs; spacers stop it wandering\nR -2.828,0,2.5 2.828,0,2.5 grey\nC CL D1 -2.828,0,2.5 y x\nC CR D1 2.828,0,2.5 y -x\nP -2.2,0,2.5 silver\nP -1.8,0,2.5 silver\nP 1.8,0,2.5 silver\nP 2.2,0,2.5 silver\n! ring: two hubs on the pitch axle, white V up to a rectangle at z = 4.5U carrying the roll bearings\nH HL W8 -1,0,2.5 z\nH HR W8 1,0,2.5 z\nP -1.2,0,2.5 silver\nP -0.8,0,2.5 silver\nP 0.8,0,2.5 silver\nP 1.2,0,2.5 silver\nC JL1 W8 -1,-1,3.5 x y\nC JL2 W8 -1,1,3.5 x y\nC JR1 W8 1,-1,3.5 x y\nC JR2 W8 1,1,3.5 x y\nR HL JL1\nR HL JL2\nR HR JR1\nR HR JR2\nR JL1 JL2\nR JR1 JR2\nC QL1 W8 -1,-2,3.5\nC QL2 W8 -1,2,3.5\nC QR1 W8 1,-2,3.5\nC QR2 W8 1,2,3.5\nR JL1 QL1\nR JL2 QL2\nR JR1 QR1\nR JR2 QR2\nC FB W8 0,-2,3.5\nC FF W8 0,2,3.5\nR QL1 FB\nR FB QR1\nR QL2 FF\nR FF QR2\n! roll axle: red rod end-on in the ring, carrying the bed's two hubs\nR FB FF\n! bed: two hubs on the roll axle, a flat deck one unit above on two 3D pairs\nH BL W8 0,-1,3.5 z\nH BR W8 0,1,3.5 z\nP 0,-1.2,3.5 silver\nP 0,-0.8,3.5 silver\nP 0,0.8,3.5 silver\nP 0,1.2,3.5 silver\nC DL B7 0,-1,4.5 x z\nC DL2 B7 0,-1,4.5 z x\nC DR B7 0,1,4.5 x z\nC DR2 B7 0,1,4.5 z x\nR BL DL\nR BR DR\nC SM W8 0,0,4.5\nC PL W8 -1,0,4.5\nC PR W8 1,0,4.5\nC N1 W8 -1,-1,4.5\nC N2 W8 1,-1,4.5\nC N3 W8 1,1,4.5\nC N4 W8 -1,1,4.5\nR SM DL2\nR SM DR2\nR SM PL\nR SM PR\nR DL2 N1\nR DL2 N2\nR DR2 N3\nR DR2 N4\nR PL N1\nR PL N4\nR PR N2\nR PR N3\nR SM N1\nR SM N2\nR SM N3\nR SM N4\n! deck edges and the two arms that reach past the frame to carry the forks\nC DB W8 0,-2,4.5\nC DF W8 0,2,4.5\nC SL1 W8 -1,-2,4.5\nC SR1 W8 1,-2,4.5\nC SL2 W8 -1,2,4.5\nC SR2 W8 1,2,4.5\nR DL2 DB\nR DR2 DF\nR N1 SL1\nR N2 SR1\nR N3 SR2\nR N4 SL2\nR DB SL1\nR DB SR1\nR DF SL2\nR DF SR2\nC TB W8 0,-3,4.5\nC TF W8 0,3,4.5\nR DB TB\nR DF TF\nR TB SL1\nR TB SR1\nR TF SL2\nR TF SR2\nC HB W8 0,-4,4.5 x z\nC HF W8 0,4,4.5 x z\nR TB HB\nR TF HF\n! Centring springs: four compliant zigzags from the frame up to the deck. They are the only thing\n! holding the bed level, and the only place to tune how firm the controller feels.\nC UL1 W8 -2,-1,4.5\nC UL2 W8 -2,1,4.5\nC UR1 W8 2,-1,4.5\nC UR2 W8 2,1,4.5\nR N1 UL1\nR N4 UL2\nR N2 UR1\nR N3 UR2\n! Zigzag: yellow then white, both bending. Swap the yellow for a grey to soften it, or add a segment.\n! Stiffness table: node cli.js spring\nC ZLF1 W8 -2,3,3.5 x y\nC ZLF2 W8 -2,2,4.5 x y\nR NL ZLF1 yellow beam\nR ZLF1 ZLF2 white beam\nR ZLF2 UL2\nC ZLB1 W8 -2,-3,3.5 x y\nC ZLB2 W8 -2,-2,4.5 x y\nR SL ZLB1 yellow beam\nR ZLB1 ZLB2 white beam\nR ZLB2 UL1\nC ZRF1 W8 2,3,3.5 x y\nC ZRF2 W8 2,2,4.5 x y\nR NR ZRF1 yellow beam\nR ZRF1 ZRF2 white beam\nR ZRF2 UR2\nC ZRB1 W8 2,-3,3.5 x y\nC ZRB2 W8 2,-2,4.5 x y\nR SR ZRB1 yellow beam\nR ZRB1 ZRB2 white beam\nR ZRB2 UR1\n! fork: two red rods bending under the deck arms, rigid into the collar so it hangs at the mouse's waist\nR HB 0,-4,0.5 red beam\nR HF 0,4,0.5 red beam\n! collar: hangs at 18.75 mm, the mouse's mid height, and pushes it in x and y\nC XB R3 0,-4,0.5 -x z\nC XF R3 0,4,0.5 x z\nC EB W8 0,-3,0.5\nC EF W8 0,3,0.5\nR XB EB\nR XF EF\nC ML1 G4 -1,-2,0.5 z x-y\nC MR1 G4 1,-2,0.5 z y\nC ML2 G4 -1,2,0.5 z -y\nC MR2 G4 1,2,0.5 z -x+y\nC CLm O2 -1,0,0.5 z y\nC CRm O2 1,0,0.5 z y\nR EB ML1\nR EB MR1\nR EF ML2\nR EF MR2\nR ML1 CLm\nR CLm ML2\nR MR1 CRm\nR CRm MR2\nR ML1 MR1\nR ML2 MR2\n! fingers: press a bed pad to tilt. 3 N is a light press, 8 N is firm.\nF DF 0,0,-3 finger front\nF DB 0,0,-3 finger back\nF PL 0,0,-3 finger left\nF PR 0,0,-3 finger right\n";</script>
+<script>var EMBEDDED_KNX = "T A-frame tower\n# Legs at 45 degrees so the diagonal closes, all in one vertical plane. The top connector's hub\n# points along x, which is what makes it a bearing for an axle later.\n! base rail\nC B1 W8 -2,-2,0.5 x y\nC B2 W8 -2,0,0.5 x y\nC B3 W8 -2,2,0.5 x y\nR B1 B2\nR B2 B3\n! apex and legs\nC T W8 -2,0,2.5 x y\nR B2 T\nR B1 T\nR B3 T\n";</script>
 <script>
 /* three.js scene: connectors, rods, joints, props. Coordinates: model mm, z up -> three y up. */
 var scene = new THREE.Scene(), canvas = document.getElementById("c");
@@ -1457,7 +1465,7 @@ function bodyGroup(i) {                          // one group per rigid body, so
   if (BODYG[i]) return BODYG[i];
   var g = new THREE.Group();
   var c = MODEL.bodies && MODEL.bodies[i] ? MODEL.bodies[i].c : [0, 0, 0];
-  g.position.copy(toThree(c)); g.userData = { body: i, rest: toThree(c) };
+  g.position.copy(toThree(c)); g.userData = { body: i, rest: toThree(c), isBodyGroup: true };
   world.add(g); BODYG[i] = g; return g;
 }
 function place(mesh, bodyId) {                   // add a world-space mesh into its body group
@@ -1516,15 +1524,24 @@ function rebuild(solved, refit) {
     m.position.copy(toThree(K.pos)).add(new THREE.Vector3(0, 16, 0));
     m.userData = { type: "load", label: L.name, step: K.step, body: K.body }; place(m, K.body); PARTS.push(m);
   });
-  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = 0.2; desk.position.y = -0.4; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
+  var box = new THREE.Box3().setFromObject(world);
+  if (!box.isEmpty()) {
+    var c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+    var span = Math.max(400, Math.max(sz.x, sz.z) * 2.2);          // a table that suits the model, not the horizon
+    desk.scale.set(span / 2400, span / 2400, 1); desk.position.set(c.x, -0.4, c.z);
+    grid.scale.set(span / 2400, 1, span / 2400); grid.position.set(c.x, 0.2, c.z);
+    if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * 1.35); }
+  }
   applyFilters();
 }
 function applyFilters() {
   var step = Number(document.getElementById("step").value), max = Number(document.getElementById("step").max), all = step >= max;
   var showJ = document.getElementById("optJoints").checked, showL = document.getElementById("optLabels").checked, showP = document.getElementById("optProps").checked;
-  var all = [];
-  world.children.forEach(function (g) { if (g.userData && g.userData.body != null && g.children) all = all.concat(g.children); else all.push(g); });
-  all.forEach(function (o) {
+  var items = [];                                   // NOT "all": that is the boolean above
+  world.children.forEach(function (g) {                        // a body group holds parts; anything else IS a part
+    if (g.userData && g.userData.isBodyGroup) items = items.concat(g.children); else items.push(g);
+  });
+  items.forEach(function (o) {
     var u = o.userData, vis = true;
     if (!u || !u.type) return;
     if (u.type === "joint") vis = showJ; if (u.type === "label") vis = showL; if (u.type === "prop") vis = showP;
@@ -1759,6 +1776,18 @@ function render(text, source) {
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });
+$("shotBtn").addEventListener("click", function () {
+  var w = canvas.clientWidth, h = canvas.clientHeight, scale = 2;          // render at 2x, then restore
+  renderer.setSize(w * scale, h * scale, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  updateCamera(); renderer.render(scene, camera);
+  var url = canvas.toDataURL("image/png");
+  renderer.setSize(w, h, false); camera.updateProjectionMatrix(); updateCamera(); renderer.render(scene, camera);
+  var a = document.createElement("a");
+  a.download = ((MODEL && MODEL.title) || "knex").replace(/[^\w-]+/g, "-").toLowerCase() + "-" + Date.now() + ".png";
+  a.href = url; a.click();
+  if (window.toast) toast("saved " + a.download);
+});
 $("optStress").addEventListener("change", function (e) {
   STRESS.on = e.target.checked; $("legend").classList.toggle("on", STRESS.on); stressApply();
 });
@@ -1874,9 +1903,14 @@ function toast(msg) {
   var VIEWS = { iso: [0.75, 1.05], front: [0, 1.5708], back: [Math.PI, 1.5708], left: [-1.5708, 1.5708],
                 right: [1.5708, 1.5708], top: [0.75, 0.02], iso2: [-0.9, 0.95], low: [0.6, 1.35] };
   window.applyViewParams = function () {
+    if (q.shot) { document.body.classList.add("shot"); if (q.shot === "bare" || q.caption === "0") document.body.classList.add("bare"); }
+
     if (q.view && VIEWS[q.view]) { CAM.theta = VIEWS[q.view][0]; CAM.phi = VIEWS[q.view][1]; flyTo = null; }
-    if (q.zoom) CAM.r *= Number(q.zoom);
-    if (q.step != null && q.step !== "1") { var el = document.getElementById("step"); el.value = q.step; stepLabel(null); applyFilters(); showStep(Number(q.step)); }
+    if (q.theta) CAM.theta = Number(q.theta);
+    if (q.phi) CAM.phi = Number(q.phi);
+    if (q.step != null && isFinite(Number(q.step))) {
+      var el = document.getElementById("step"); el.value = q.step; stepLabel(null); applyFilters(); showStep(Number(q.step));
+    }
     (q.hide || "").split(",").filter(Boolean).forEach(function (h) {
       var map = { props: "optProps", joints: "optJoints", labels: "optLabels" };
       if (map[h]) { document.getElementById(map[h]).checked = false; }
@@ -1896,14 +1930,16 @@ function toast(msg) {
     for (var i = 1; i <= 6; i++) setTimeout(function () {        // headless needs a few passes after layout settles
       renderer.setSize(canvas.clientWidth || 1200, canvas.clientHeight || 800, false);
       camera.aspect = (canvas.clientWidth || 1200) / (canvas.clientHeight || 800); camera.updateProjectionMatrix();
-      fitAll(); updateCamera(); renderer.render(scene, camera); window.SHOT_READY = true;
+      fitAll(); updateCamera(); renderer.render(scene, camera);
+      if (q.caption && q.caption !== "0") { var s2 = document.getElementById("stepInfo"); if (s2) s2.innerHTML = "<b>" + q.caption + "</b>"; }
+      window.SHOT_READY = true;
     }, i * 120);
   };
   window.fitAll = function () {
     var box = new THREE.Box3().setFromObject(world);
     if (box.isEmpty()) return;
     CAM.target.copy(box.getCenter(new THREE.Vector3()));
-    CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : 1.5));
+    CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * (q.zoom ? Number(q.zoom) : (q.shot ? 1.05 : 1.35)));
   };
   var t = setInterval(function () { if (window.MODEL && window.applyViewParams) { clearInterval(t); applyViewParams(); } }, 30);
 })();

@@ -30,6 +30,9 @@ checks what is present, builds `dist/knex.js`, verifies the example model and wr
 Build in small steps. Add a `!` step, append ten or twenty lines, run `node cli.js <build>`, fix what it
 reports by line number, then continue. A model written all at once usually has a dozen impossible spans.
 
+To look at something, `node cli.js shot <build> out.png view=iso` gives a 3D render with no interface in
+it; `node cli.js render <build> out.svg` gives a line drawing and needs no browser at all.
+
 Always finish by simulating: `node cli.js sim <build>`. The physics has caught a fork passing through the
 payload, springs preloading bearings eight times past their capacity, and a rig with nothing holding it
 level. None of those are visible in the geometry check.

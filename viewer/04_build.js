@@ -18,7 +18,7 @@ function bodyGroup(i) {                          // one group per rigid body, so
   if (BODYG[i]) return BODYG[i];
   var g = new THREE.Group();
   var c = MODEL.bodies && MODEL.bodies[i] ? MODEL.bodies[i].c : [0, 0, 0];
-  g.position.copy(toThree(c)); g.userData = { body: i, rest: toThree(c) };
+  g.position.copy(toThree(c)); g.userData = { body: i, rest: toThree(c), isBodyGroup: true };
   world.add(g); BODYG[i] = g; return g;
 }
 function place(mesh, bodyId) {                   // add a world-space mesh into its body group
@@ -77,15 +77,24 @@ function rebuild(solved, refit) {
     m.position.copy(toThree(K.pos)).add(new THREE.Vector3(0, 16, 0));
     m.userData = { type: "load", label: L.name, step: K.step, body: K.body }; place(m, K.body); PARTS.push(m);
   });
-  var box = new THREE.Box3().setFromObject(world); if (!box.isEmpty()) { var c = box.getCenter(new THREE.Vector3()); grid.position.y = 0.2; desk.position.y = -0.4; if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(300, box.getSize(new THREE.Vector3()).length() * 1.75); } }
+  var box = new THREE.Box3().setFromObject(world);
+  if (!box.isEmpty()) {
+    var c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+    var span = Math.max(400, Math.max(sz.x, sz.z) * 2.2);          // a table that suits the model, not the horizon
+    desk.scale.set(span / 2400, span / 2400, 1); desk.position.set(c.x, -0.4, c.z);
+    grid.scale.set(span / 2400, 1, span / 2400); grid.position.set(c.x, 0.2, c.z);
+    if (refit) { flyTo = null; CAM.target.copy(c); CAM.r = Math.max(260, box.getSize(new THREE.Vector3()).length() * 1.35); }
+  }
   applyFilters();
 }
 function applyFilters() {
   var step = Number(document.getElementById("step").value), max = Number(document.getElementById("step").max), all = step >= max;
   var showJ = document.getElementById("optJoints").checked, showL = document.getElementById("optLabels").checked, showP = document.getElementById("optProps").checked;
-  var all = [];
-  world.children.forEach(function (g) { if (g.userData && g.userData.body != null && g.children) all = all.concat(g.children); else all.push(g); });
-  all.forEach(function (o) {
+  var items = [];                                   // NOT "all": that is the boolean above
+  world.children.forEach(function (g) {                        // a body group holds parts; anything else IS a part
+    if (g.userData && g.userData.isBodyGroup) items = items.concat(g.children); else items.push(g);
+  });
+  items.forEach(function (o) {
     var u = o.userData, vis = true;
     if (!u || !u.type) return;
     if (u.type === "joint") vis = showJ; if (u.type === "label") vis = showL; if (u.type === "prop") vis = showP;

@@ -202,19 +202,9 @@ the browser run the same source.
 node cli.js sim builds/demo_mech.knx    # motor, gears, string, band and ball in one rig
 ```
 
-### The bench
-
-`node cli.js view` builds a single self-contained HTML file and opens it. It runs the same engine live:
-
-- **Drag any part with the cursor** and a force is applied there, while it runs. Drag the background to
-  orbit, shift-drag to pan.
-- A **step slider** that builds the model up, with the parts for that step and a camera that walks around.
-- A **stress view** that colours bending rods and bearings by how close they are to letting go.
-- Joint loads, rod forces, and what broke, updating as it runs.
-- The table is there, with the friction you picked.
-
-The build fails if the viewer does not run: `scripts/smoke.js` executes the page's own code in Node
-against a stubbed browser, so a throw that would freeze the page is caught before it ships.
+<div align="center">
+<img src="docs/stress.png" width="700" alt="the stress view"/>
+</div>
 
 ### The bench
 
@@ -226,6 +216,7 @@ against a stubbed browser, so a throw that would freeze the page is caught befor
 - A **stress view** that colours bending rods and bearings by how close they are to letting go.
 - Joint loads, rod forces, and what broke, updating as it runs.
 - The table is there, with the friction you picked.
+- **save image** writes the current view at twice the screen resolution.
 
 The build fails if the viewer does not run: `scripts/smoke.js` executes the page's own code in Node
 against a stubbed browser, so a throw that would freeze the page is caught before it ships.
@@ -263,10 +254,28 @@ Full index in [docs/PATTERNS.md](docs/PATTERNS.md).
 
 ---
 
-## Instructions, generated
+## Pictures
 
-`node cli.js instructions` walks the build steps, highlights the new parts in orange, lists what that step
-needs, and turns the camera as the model goes up.
+Every image in this repo is a real render of the model, made by the same renderer the bench uses, driven
+headlessly with no interface in the picture.
+
+```bash
+node cli.js shot builds/rig.knx out.png view=iso caption="my rig"
+node cli.js shot builds/rig.knx stressed.png view=iso stress=1 run=1.5
+./scripts/gallery.sh                       # regenerate every image in the repo
+```
+
+In the bench itself, **save image** writes the current view at twice the screen resolution.
+
+There is also a line-drawing renderer that needs no browser and no GPU at all, for when you are working
+somewhere without one: `node cli.js render builds/rig.knx out.svg --view iso --labels`.
+
+Views: `iso iso2 front back left right top low`. Masking: `hide=props,joints,rods,conns,spacers,loads`.
+
+### Instructions, generated
+
+`node cli.js instructions` walks the build steps, lists what each one needs, and turns the camera as the
+model goes up.
 
 <div align="center">
 <img src="docs/instructions/step05.png" width="640" alt="a build step"/>
