@@ -15,9 +15,14 @@ if (file === "live") {                                   // hot-reloading bench 
 }
 if (file === "log") {                                    // post to a running live server
   var http = require("http");
-  var pos = args.filter(function (a) { return !isOpt(a); });
-  var text = pos.slice(1).join(" ");
   function o(f, d) { var i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; }
+  var words = [], skip = false;                          // drop --flags AND the value each one takes
+  args.slice(args.indexOf("log") + 1).forEach(function (a) {
+    if (skip) { skip = false; return; }
+    if (isOpt(a)) { skip = true; return; }
+    words.push(a);
+  });
+  var text = words.join(" ");
   var payload = { kind: o("--kind", "note"), text: text };
   var img = o("--image");
   if (img) {
