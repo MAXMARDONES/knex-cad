@@ -1,8 +1,8 @@
 /* Contacts, regenerated each step: every feature point against the desk, and against every prop box. */
 KNEX.phys.collide = function (W) {
   var V = KNEX.V, P = KNEX.phys, C = [];
-  var props = W.bodies.filter(function (b) { return b.prop || b.ball; });
-  props.forEach(function (Q) { Q.rBound = Q.box ? V.norm(Q.box) : Q.radius; });
+  var props = W.bodies.filter(function (b) { return b.prop || b.ball; });   // anything a part can hit
+  props.forEach(function (Q) { Q.rBound = Q.box ? V.norm(Q.box) : Q.cyl ? Math.hypot(Q.cyl.r, Q.cyl.h) : Q.radius; });
   W.bodies.forEach(function (B) {
     var moving = !B.fixed;
     var nearDesk = moving && B.x[2] - B.rBound <= W.ground + 0.001;
@@ -17,6 +17,18 @@ KNEX.phys.collide = function (W) {
       }
       nearProps.forEach(function (Q) {                           // prop boxes
         if (V.dist(p, Q.x) > Q.rBound + f.r) return;
+        if (Q.cyl) {                                             // cylinder: the side, or a flat end
+          var dc = V.sub(p, Q.x), qc = Q.q, lc = P.qrot([-qc[0], -qc[1], -qc[2], qc[3]], dc);
+          var radial = Math.hypot(lc[0], lc[1]), axial = Math.abs(lc[2]);
+          var overR = Q.cyl.r + f.r - radial, overA = Q.cyl.h + f.r - axial;
+          if (overR <= 0 || overA <= 0) return;
+          var nl, pen3;
+          if (overR < overA && radial > 1e-9) { nl = [lc[0] / radial, lc[1] / radial, 0]; pen3 = overR; }
+          else { nl = [0, 0, lc[2] < 0 ? -1 : 1]; pen3 = overA; }
+          var n3 = P.qrot(qc, nl);
+          C.push({ A: B, B: Q, p: p, r: V.sub(p, B.x), rB: V.sub(p, Q.x), n: n3, pen: pen3, mu: Math.min(B.mu, Q.mu), lam: 0, lt: [0, 0] });
+          return;
+        }
         if (Q.radius) {                                          // sphere prop: simple point-vs-sphere
           var dd = V.sub(p, Q.x), dist = V.norm(dd), pen2 = Q.radius + f.r - dist;
           if (pen2 > -0.003 && dist > 1e-9) {

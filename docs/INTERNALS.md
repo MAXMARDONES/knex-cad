@@ -21,7 +21,9 @@ the renderers and the viewer. Find your change in the table, then read the recip
 | change **mass, or what counts as one rigid body** | `engine/07_bodies.js` | the union-find over rigid joints, and the part mass table |
 | add a **physics element** (a new kind of spring, damper, motor) | `engine/13_mech.js` to build it, `engine/11_solver.js` to solve it | see the recipe below |
 | change how a **bearing or bending rod behaves** | `engine/10_world.js` builds them, `engine/11_solver.js` solves them | `joints`, `beams` |
-| add a **contact shape** | `engine/12_collide.js` | `KNEX.phys.collide`, which runs every step |
+| add a **contact shape** | `engine/12_collide.js` | `KNEX.phys.collide`, which runs every step; box, sphere and cylinder live there |
+| add a **prop** to the catalogue | `engine/01_catalog.js` | `PROPS`: shape, size mm, mass g, friction, colour, and a one-line note |
+| make a build **bend** instead of being rigid | put `FLEX` at the top of the `.knx` | every rod becomes a beam; see `builds/demo_pole.knx` |
 | add a **CLI command** | `cli.js` | one `if (file === "…")` branch; put anything long in `scripts/` |
 | change the **3D look** of a part | `viewer/03b_parts.js` | `connGeo`, `rodGeo` |
 | add a **viewer panel or control** | `viewer/02_body.html` for the markup, `viewer/05_ui.js` to wire it | and `viewer/01_head.html` for the styling |
@@ -86,7 +88,8 @@ After any change under `engine/`, run `./build.sh` or the CLI will still be runn
 | `viewer/10_params.js` | URL parameters and shot mode |
 | `viewer/11_drag.js` | pushing a part with the cursor |
 | `viewer/12_live.js` | the session feed and hot reload |
-| `viewer/13_hands.js` | webcam hand tracking: pinch to grab, move to pull, roll to twist |
+| `viewer/13_hands.js` | webcam hand tracking: pinch to grab, move to pull, roll to twist, open palm to push |
+| `viewer/14_ui2.js` | camera presets, keyboard shortcuts, the body and prop tables |
 | `scripts/live.js` | the local server: watch, recompile, event stream |
 | `scripts/replay.js` | rebuilding a feed from a transcript |
 | `scripts/render.js` | the line drawing |

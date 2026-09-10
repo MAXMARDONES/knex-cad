@@ -79,6 +79,37 @@ loose rods, floating connectors, inventory, flexi span ≤ rod length (bow repor
 Stiffness: cantilever k = 3EI/L³ per rod (E 2.8 GPa std, 0.4 GPa flexi, I ≈ 45 mm⁴ — estimates).
 
 
+## Props
+
+`node cli.js props` lists the catalogue: a phone, a mouse, a book, a steel counterweight, a full and an
+empty water bottle, a can, a golf, tennis and steel ball, a coin, a plain block. Each carries its real
+size in mm, its real mass in grams, a friction coefficient for that material on a desk, and a shape —
+box, sphere or cylinder, each with its own contact test and its own inertia.
+
+```
+X phone 0,0,3                       # the catalogue's size, mass, friction and colour
+X ball -4,0,1.5 vel=2.2,0,0.4 spin=0,14,0    # thrown, and spinning
+X thing 0,0,3 90,60,20 mass=140 mu=0.3 shape=cylinder    # or give your own
+```
+
+A prop with a mass is a rigid body: it falls, slides, topples, and collides with the model and with the
+other props. `builds/demo_props.knx` throws a steel ball at a tower.
+
+## Flexible builds
+
+A frame braced with triangles really is rigid, so by default a rod welded into a body does not bend. A
+slender chain of rods is not rigid at all. Put `FLEX` at the top of a build and every rod becomes a
+bending beam:
+
+```
+T Fishing pole
+FLEX
+...
+```
+
+`builds/demo_pole.knx` is a metre of K'NEX pole. It sags 34 mm under its own weight and whips when you
+wave the butt. Flex costs a body per rod, so use it on the slender thing you care about, not on a frame.
+
 ## Physics
 
 `node cli.js sim build.knx` runs the build as a rigid-body model. Bodies come from the rigid partition:

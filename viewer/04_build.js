@@ -65,8 +65,13 @@ function rebuild(solved, refit) {
     m.position.copy(toThree(P.pos)); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirThree(P.n)); m.userData = { type: "spacer", step: P.step, body: P.body }; place(m, P.body);
   });
   solved.extras.forEach(function (X) {
-    var m = new THREE.Mesh(new THREE.BoxGeometry(X.size[0], X.size[2], X.size[1]), new THREE.MeshStandardMaterial({ color: new THREE.Color(X.color), transparent: true, opacity: 0.45, roughness: 0.7 }));
-    m.position.copy(toThree(X.pos)); m.userData = { type: "prop", label: X.label, step: X.step, prop: true };
+    var mat2 = new THREE.MeshStandardMaterial({ color: new THREE.Color(X.color), transparent: true, opacity: 0.55, roughness: 0.65, metalness: 0.05 });
+    var geo;
+    if (X.shape === "sphere") geo = new THREE.SphereGeometry(X.size[0] / 2, 20, 14);
+    else if (X.shape === "cylinder") geo = new THREE.CylinderGeometry(X.size[0] / 2, X.size[0] / 2, X.size[2], 20);
+    else geo = new THREE.BoxGeometry(X.size[0], X.size[2], X.size[1]);
+    var m = new THREE.Mesh(geo, mat2);
+    m.position.copy(toThree(X.pos)); m.userData = { type: "prop", label: X.label, step: X.step, prop: true, shape: X.shape };
     var pid = (MODEL.bodies || []).filter(function (b) { return b.prop === X.label; })[0];
     m.userData.body = pid ? pid.id : null; place(m, m.userData.body); PARTS.push(m);
   });

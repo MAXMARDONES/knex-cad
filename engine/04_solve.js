@@ -59,6 +59,8 @@ KNEX.solve = function (m) {
   pendC.forEach(function (c) { issue("error", c, c.mode + " " + c.name + ": cannot place it (" + (c.mode === "C" ? "base connector missing" : "no rod passes through " + nm(c.at)) + ")"); });
   pendR.forEach(function (r) { issue("error", r, "rod " + nm(r.a) + "->" + nm(r.b) + ": an end is unplaced"); });
   out.rods.sort(function (a, b) { return a.id - b.id; });
+  if (m.flex) out.rods.forEach(function (R) { R.beam = true; });      // every rod bends, so nothing is welded
+  out.flex = !!m.flex;
   // ---- work out the plane of every connector that did not name one, from the rods that reach it
   out.conns.forEach(function (K) {
     if (!K.auto) return;
@@ -148,7 +150,7 @@ KNEX.solve = function (m) {
     if (!h) issue("error", s, "spacer at " + nm(s.at) + ": no rod there");
     else out.spacers.push({ pos: h.foot, n: h.rod.u, size: s.size, th: D.spacer[s.size] || 3.1, line: s.line, step: s.step, rod: h.rod.id });
   });
-  m.extras.forEach(function (x) { var p = point(x.at); if (p) out.extras.push({ label: x.label, pos: p, size: x.size, color: x.color, mass: x.mass, mu: x.mu, pad: x.pad || [0, 0], fixed: x.fixed, line: x.line, step: x.step }); });
+  m.extras.forEach(function (x) { var p = point(x.at); if (p) out.extras.push({ label: x.label, pos: p, size: x.size, color: x.color, mass: x.mass, mu: x.mu, pad: x.pad || [0, 0], shape: x.shape || 'box', vel: x.vel, spin: x.spin, fixed: x.fixed, line: x.line, step: x.step }); });
   out.loads = (m.loads || []).map(function (L) { return { at: L.at, F: L.F, name: L.name, line: L.line, step: L.step }; });
   out.loads.forEach(function (L) { if (!byName[L.at]) issue("error", L, "F: connector " + L.at + " was not placed"); });
   // ---- mechanism elements

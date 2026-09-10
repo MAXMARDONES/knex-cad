@@ -7,7 +7,7 @@ KNEX.build = function (text) {
   m.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
   KNEX.check(m, s);
   s.issues.sort(function (a, b) { return (a.level === "error" ? 0 : 1) - (b.level === "error" ? 0 : 1) || (a.line || 0) - (b.line || 0); });
-  s.title = m.title; s.U = m.U; s.steps = m.steps; s.inventory = m.inventory;
+  s.title = m.title; s.U = m.U; s.flex = !!m.flex; s.steps = m.steps; s.inventory = m.inventory;
   s.errors = s.issues.filter(function (i) { return i.level === "error"; }).length;
   s.warnings = s.issues.length - s.errors;
   return s;

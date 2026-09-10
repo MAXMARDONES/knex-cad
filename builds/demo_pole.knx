@@ -1,0 +1,26 @@
+T Fishing pole
+# FLEX makes every rod a bending beam instead of rigid structure. A braced frame is genuinely rigid,
+# but a slender chain of rods is not: wave this and it whips, exactly like the real thing.
+# Grab the tip in the bench, with the mouse or with your hand, and shake it.
+FLEX
+! butt: clamped to the table
+C H0 W8 0,0,1.5 x y
+C H1 W8 0,0,0.5 x y
+R H0 H1
+A H1
+! the pole: eight red rods end to end, each one bending
+C P1 W8 0,4,1.5 x y
+C P2 W8 0,8,1.5 x y
+C P3 W8 0,12,1.5 x y
+C P4 W8 0,16,1.5 x y
+C P5 W8 0,20,1.5 x y
+C P6 W8 0,24,1.5 x y
+C P7 W8 0,28,1.5 x y
+R H0 P1
+R P1 P2
+R P2 P3
+R P3 P4
+R P4 P5
+R P5 P6
+R P6 P7
+F P7 0,0,-2 tip

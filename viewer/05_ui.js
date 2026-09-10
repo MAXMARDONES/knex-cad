@@ -26,6 +26,7 @@ function render(text, source) {
   if (window.physLoadButtons) physLoadButtons(s.loads || []);
   physBuild();
   showStep(Number($("step").value));
+  if (window.bodyTables) bodyTables();
 }
 function stepLabel(s) { var v = Number($("step").value), n = s ? s.steps.length : Number($("step").max); $("stepname").textContent = v >= n ? "complete (" + n + " steps)" : v === 0 ? "nothing placed" : (v + "/" + n + " " + (MODEL && MODEL.steps[v - 1] ? MODEL.steps[v - 1].title : "")); }
 $("step").addEventListener("input", function () { stepLabel(null); applyFilters(); showStep(Number($("step").value)); });

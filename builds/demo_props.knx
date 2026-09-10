@@ -1,0 +1,28 @@
+T Props on the table
+# Everything in the catalogue, with its real size, mass and friction, sitting on a rig you can knock over.
+# node cli.js props lists them. Grab one in the bench and throw it at the tower.
+! a tower to knock down: two A-frames tied by an axle through their tops
+C B1 W8 -1,-2,0.5 x y
+C B2 W8 -1,2,0.5 x y
+C B3 W8 1,-2,0.5 x y
+C B4 W8 1,2,0.5 x y
+C T1 W8 -1,0,2.5 x y
+C T2 W8 1,0,2.5 x y
+R B1 B2
+R B3 B4
+R B1 T1
+R B2 T1
+R B3 T2
+R B4 T2
+R -1,0,2.5 1,0,2.5 blue
+! the props: real mass, real friction, real shapes
+X phone -3,-2,0.13
+X book 3,-2,0.3
+X weight -3,1,0.55
+X bottle 3,1,2.867
+X can -2,3,1.535
+X ball 0,-4,0.58
+X ball-tennis 2,3,0.9
+X coin 2,-4,0.03
+! one thrown at the tower, so something happens the moment you press run
+X ball-steel -4,0,1.5 vel=2.2,0,0.4 spin=0,14,0

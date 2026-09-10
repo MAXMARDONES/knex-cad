@@ -4,7 +4,8 @@
    touches the network, and only after you switch it on. OpenCV alone does not give finger landmarks.
    A pinch grabs the part under your hand; moving pulls it; rolling your wrist twists it. */
 var HANDS = { on: false, ready: false, hands: null, video: null, lm: [null, null], pinch: [false, false],
-              roll: [0, 0], base: [0, 0], score: [0, 0], err: null };
+              roll: [0, 0], base: [0, 0], score: [0, 0], push: [0, 0], err: null };
+var PALM = [];                                           // open-palm pushes, rebuilt every frame
 var MP_SRC = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
 var MP_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/hands";
 
@@ -57,6 +58,7 @@ function handsPump() {
 function dist2(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function handsResults(r) {
   if (!HANDS.on) return;
+  PALM.length = 0;
   var seen = { left: false, right: false };
   (r.multiHandLandmarks || []).forEach(function (lm, i) {
     var label = ((r.multiHandedness || [])[i] || {}).label || (i ? "Left" : "Right");
@@ -87,9 +89,21 @@ function handsResults(r) {
       while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
       g.twist = d;
     } else if (!pinch && g) { grabRelease(side); }
+    if (!pinch) {                                          // an open palm pushes whatever is under it
+      var hit2 = pickBodyAt(cx, cy);
+      if (hit2 && hit2.body && !hit2.body.fixed) {
+        var open = dist2(lm[4], lm[8]) / span;             // how open the hand is sets how hard it pushes
+        var into = camera.getWorldDirection(new THREE.Vector3());
+        var F = Math.min(12, 14 * Math.max(0, open - 0.5));
+        HANDS.push[idx] = F;
+        if (F > 0.2) PALM.push({ body: hit2.body,
+          at: [hit2.pointMm.x / 1000, -hit2.pointMm.z / 1000, hit2.pointMm.y / 1000],
+          F: [into.x * F, -into.z * F, into.y * F], world: true, gain: 1 });
+      } else HANDS.push[idx] = 0;
+    } else HANDS.push[idx] = 0;
     HANDS.pinch[idx] = pinch;
   });
-  ["left", "right"].forEach(function (s, i) { if (!seen[s]) { HANDS.lm[i] = null; HANDS.pinch[i] = false; grabRelease(s); } });
+  ["left", "right"].forEach(function (s, i) { if (!seen[s]) { HANDS.lm[i] = null; HANDS.pinch[i] = false; HANDS.push[i] = 0; grabRelease(s); } });
   handsDraw();
 }
 function handsDraw() {

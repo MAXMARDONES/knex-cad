@@ -75,6 +75,7 @@ var T = {
   .forEach(function (n) { T[n] = function () { return new Geo(); }; });
 ["Scene", "Group", "PerspectiveCamera", "GridHelper", "ArrowHelper", "HemisphereLight", "DirectionalLight", "Sprite"]
   .forEach(function (n) { T[n].prototype = Object.create(Obj3.prototype); T[n].prototype.constructor = T[n]; });
+T.SphereGeometry = T.SphereGeometry || function () { return new Geo(); };
 T.geometry = { align_vectors: function () { return new T.Matrix4(); } };
 T.MathUtils = { clamp: function (v, a, b) { return Math.max(a, Math.min(b, v)); } };
 module.exports = T;

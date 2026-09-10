@@ -45,6 +45,24 @@ var KNEX = (function () {
   };
   var RGB = { green: "#2E9E4F", white: "#ECECEA", blue: "#2563D9", yellow: "#F2C51D", red: "#D9302C", grey: "#8C9096",
               purple: "#7B4FB8", lgrey: "#B9BDC3", orange: "#F08A1D", dgrey: "#4A4E55", flexi: "#9B6BD6", spacer: "#3B82F6", silver: "#C0C4CA" };
+  /* Things you put on the table with the model. Real dimensions in mm, real mass in grams, and a
+     friction coefficient for that material sliding on a desk. Sources are everyday measurements:
+     a phone in a case, a full 500 ml PET bottle, a golf and a tennis ball, a 40 mm steel cube. */
+  var PROPS = {
+    phone:      { shape: "box",      size: [75, 160, 9],   mass: 190,  mu: 0.40, color: "#2B2F36", note: "a phone in a case" },
+    mouse:      { shape: "box",      size: [62, 117, 38],  mass: 85,   mu: 0.25, color: "#3B4252", note: "a wired optical mouse" },
+    book:       { shape: "box",      size: [148, 210, 22], mass: 260,  mu: 0.35, color: "#6B4A2F", note: "a paperback" },
+    weight:     { shape: "box",      size: [40, 40, 40],   mass: 500,  mu: 0.50, color: "#5A6068", note: "a 40 mm steel cube: the counterweight" },
+    weight2:    { shape: "box",      size: [50, 50, 50],   mass: 980,  mu: 0.50, color: "#4A5058", note: "a 50 mm steel cube, near a kilo" },
+    bottle:     { shape: "cylinder", size: [65, 65, 215],  mass: 520,  mu: 0.30, color: "#7FB8D8", note: "a full 500 ml water bottle" },
+    "bottle-empty": { shape: "cylinder", size: [65, 65, 215], mass: 22, mu: 0.30, color: "#AECFE2", note: "the same bottle, empty" },
+    can:        { shape: "cylinder", size: [66, 66, 115],  mass: 350,  mu: 0.30, color: "#B4483C", note: "a 330 ml can" },
+    ball:       { shape: "sphere",   size: [43, 43, 43],   mass: 46,   mu: 0.25, color: "#E9ECE6", note: "a golf ball" },
+    "ball-tennis": { shape: "sphere", size: [67, 67, 67],  mass: 58,   mu: 0.55, color: "#C8D93C", note: "a tennis ball: light and grippy" },
+    "ball-steel": { shape: "sphere", size: [25, 25, 25],   mass: 64,   mu: 0.20, color: "#8C9096", note: "a 25 mm steel ball bearing" },
+    coin:       { shape: "cylinder", size: [26, 26, 2.2],  mass: 8.5,  mu: 0.35, color: "#C8A93C", note: "a coin, for a light trigger" },
+    block:      { shape: "box",      size: [90, 90, 45],   mass: 120,  mu: 0.35, color: "#3B4252", note: "a plain test block" }
+  };
   // K'NEX gears: teeth -> pitch radius in mm (MIT measurements, KNEX.md 2.5)
   var GEARS = { 14: 10.9, 34: 26.6, 58: 44.5, 82: 64.0 };
   // what the rig and the mouse stand on. PTFE mouse feet against each surface; K'NEX parts are acetal.
@@ -55,7 +73,7 @@ var KNEX = (function () {
     "desk-laminate": { mu: 0.18, name: "laminate", muKnex: 0.28 },
     "glass": { mu: 0.12, name: "glass", muKnex: 0.20 }
   };
-  return { U: U, DIMS: DIMS, LADDER: LADDER, FLEXI: FLEXI, KINDS: KINDS, RGB: RGB, SURFACES: SURFACES, GEARS: GEARS,
+  return { U: U, DIMS: DIMS, LADDER: LADDER, FLEXI: FLEXI, KINDS: KINDS, RGB: RGB, SURFACES: SURFACES, GEARS: GEARS, PROPS: PROPS,
            ladder: function (c) { for (var i = 0; i < LADDER.length; i++) if (LADDER[i].color === c) return LADDER[i]; return null; } };
 })();
 /* Small vector toolkit (arrays of 3). */
@@ -219,7 +237,10 @@ KNEX.expand = function (text) {
    S name kind x,y,z arm [ref]          side-on clip: x,y,z is the point ON the rod, arm points from hub to rod
    R a b [colour|flexi|flexi-colour]    rod between connectors (names) or points; colour inferred from length
    P x,y,z blue|silver                  spacer on the rod through that point
-   X label x,y,z sx,sy,sz [#hex] [mass=g] [mu=] [pad=x,y mm shim] [fixed]  prop box (mm); with mass it is a physical body
+   X name x,y,z [sx,sy,sz] [options]    a prop on the table. Name one from the catalogue (node cli.js props)
+                                        and its real size, mass, friction and shape are used; or give your
+                                        own size. Options: mass=g mu= shape=box|sphere|cylinder pad=x,y
+                                        vel=x,y,z (m/s, throw it) spin=x,y,z (rad/s) fixed #hex
    F name fx,fy,fz [label]              external force in newtons applied at that connector (a finger, a weight)
    E name a b [rest=mm] [k=N/mm]        rubber band: pulls only, never pushes
    Y name a b [via=c,d] [slack=mm]      string over guides: inextensible in tension, limp otherwise
@@ -232,9 +253,12 @@ KNEX.expand = function (text) {
    G name conn [teeth=]                 gear on that connector's axle; two gears that touch drive each other
    I kind=n colour=n ...                inventory available
    ! step title                         build step (everything below belongs to it)
+   FLEX [on|off]                        treat every rod as a bending beam, not as rigid structure.
+                                        A braced frame is rigid; a slender chain is not, and this is how
+                                        you get a pole that whips when you wave it.
    T title / U mm / # comment                                                                       */
 KNEX.parse = function (text) {
-  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
+  var V = KNEX.V, m = { title: "", U: KNEX.U, flex: false, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
   var names = {}, step = -1;
   function err(ln, s) { m.errors.push({ line: ln, msg: s }); }
   function pt(tok, ln) {                      // "x,y,z" | "NAME@x,y,z" (offset from a connector, units)
@@ -252,6 +276,7 @@ KNEX.parse = function (text) {
     var t = line.split(/\s+/), op = t[0];
     if (op === "T") { m.title = t.slice(1).join(" "); return; }
     if (op === "U") { m.U = Number(t[1]) || KNEX.U; return; }
+    if (op === "FLEX") { m.flex = t[1] !== "off"; return; }
     if (op === "!") { m.steps.push({ title: t.slice(1).join(" "), line: ln }); step = m.steps.length - 1; return; }
     if (op === "I") { t.slice(1).forEach(function (kv) { var p = kv.split("="); m.inventory[p[0]] = Number(p[1]); }); return; }
     if (op === "C" || op === "H" || op === "S") {
@@ -280,14 +305,24 @@ KNEX.parse = function (text) {
       m.rods.push({ a: A, b: B, color: col, flexi: flexi, beam: beam || flexi, line: ln, step: step }); return;
     }
     if (op === "P") { var q = pt(t[1], ln); if (!q) return; m.spacers.push({ at: q, size: t[2] || "blue", line: ln, step: step }); return; }
-    if (op === "X") { var q2 = pt(t[2], ln), sz = pt(t[3], ln); if (!q2 || !sz) return;
-      var x = { label: t[1], at: q2, size: sz, color: "#6B7280", mass: 0, mu: null, pad: [0, 0], fixed: false, line: ln, step: step };
-      t.slice(4).forEach(function (f) {
+    if (op === "X") {
+      var q2 = pt(t[2], ln); if (!q2) return;
+      var hasSize = t[3] && t[3].indexOf(",") >= 0 && t[3].split(",").length === 3 && t[3].split(",").every(function (n) { return isFinite(Number(n)); });
+      var sz = hasSize ? pt(t[3], ln) : null;
+      var cat = KNEX.PROPS[t[1]] || null;
+      if (!sz && !cat) return err(ln, "X " + t[1] + ": give a size sx,sy,sz, or use a name from the catalogue (node cli.js props)");
+      var x = { label: t[1], at: q2, size: sz || cat.size.slice(), color: cat ? cat.color : "#6B7280",
+                mass: cat ? cat.mass : 0, mu: cat ? cat.mu : null, shape: cat ? cat.shape : "box",
+                pad: [0, 0], vel: null, spin: null, fixed: false, line: ln, step: step };
+      t.slice(hasSize ? 4 : 3).forEach(function (f) {
         if (f[0] === "#") x.color = f;
         else if (f === "fixed") x.fixed = true;
         else if (f.indexOf("mass=") === 0) x.mass = Number(f.slice(5));
         else if (f.indexOf("mu=") === 0) x.mu = Number(f.slice(3));
         else if (f.indexOf("pad=") === 0) { var q = f.slice(4).split(",").map(Number); x.pad = [q[0] || 0, q.length > 1 ? q[1] : q[0] || 0]; }
+        else if (f.indexOf("shape=") === 0) { if (["box", "sphere", "cylinder"].indexOf(f.slice(6)) >= 0) x.shape = f.slice(6); else err(ln, "X: shape must be box, sphere or cylinder"); }
+        else if (f.indexOf("vel=") === 0) { var v1 = f.slice(4).split(",").map(Number); if (v1.length === 3 && v1.every(isFinite)) x.vel = v1; else err(ln, "X: vel=x,y,z in m/s"); }
+        else if (f.indexOf("spin=") === 0) { var v2 = f.slice(5).split(",").map(Number); if (v2.length === 3 && v2.every(isFinite)) x.spin = v2; else err(ln, "X: spin=x,y,z in rad/s"); }
         else err(ln, "X: unknown option '" + f + "'");
       });
       m.extras.push(x); return; }
@@ -414,6 +449,8 @@ KNEX.solve = function (m) {
   pendC.forEach(function (c) { issue("error", c, c.mode + " " + c.name + ": cannot place it (" + (c.mode === "C" ? "base connector missing" : "no rod passes through " + nm(c.at)) + ")"); });
   pendR.forEach(function (r) { issue("error", r, "rod " + nm(r.a) + "->" + nm(r.b) + ": an end is unplaced"); });
   out.rods.sort(function (a, b) { return a.id - b.id; });
+  if (m.flex) out.rods.forEach(function (R) { R.beam = true; });      // every rod bends, so nothing is welded
+  out.flex = !!m.flex;
   // ---- work out the plane of every connector that did not name one, from the rods that reach it
   out.conns.forEach(function (K) {
     if (!K.auto) return;
@@ -503,7 +540,7 @@ KNEX.solve = function (m) {
     if (!h) issue("error", s, "spacer at " + nm(s.at) + ": no rod there");
     else out.spacers.push({ pos: h.foot, n: h.rod.u, size: s.size, th: D.spacer[s.size] || 3.1, line: s.line, step: s.step, rod: h.rod.id });
   });
-  m.extras.forEach(function (x) { var p = point(x.at); if (p) out.extras.push({ label: x.label, pos: p, size: x.size, color: x.color, mass: x.mass, mu: x.mu, pad: x.pad || [0, 0], fixed: x.fixed, line: x.line, step: x.step }); });
+  m.extras.forEach(function (x) { var p = point(x.at); if (p) out.extras.push({ label: x.label, pos: p, size: x.size, color: x.color, mass: x.mass, mu: x.mu, pad: x.pad || [0, 0], shape: x.shape || 'box', vel: x.vel, spin: x.spin, fixed: x.fixed, line: x.line, step: x.step }); });
   out.loads = (m.loads || []).map(function (L) { return { at: L.at, F: L.F, name: L.name, line: L.line, step: L.step }; });
   out.loads.forEach(function (L) { if (!byName[L.at]) issue("error", L, "F: connector " + L.at + " was not placed"); });
   // ---- mechanism elements
@@ -672,7 +709,7 @@ KNEX.build = function (text) {
   m.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
   KNEX.check(m, s);
   s.issues.sort(function (a, b) { return (a.level === "error" ? 0 : 1) - (b.level === "error" ? 0 : 1) || (a.line || 0) - (b.line || 0); });
-  s.title = m.title; s.U = m.U; s.steps = m.steps; s.inventory = m.inventory;
+  s.title = m.title; s.U = m.U; s.flex = !!m.flex; s.steps = m.steps; s.inventory = m.inventory;
   s.errors = s.issues.filter(function (i) { return i.level === "error"; }).length;
   s.warnings = s.issues.length - s.errors;
   return s;
@@ -790,8 +827,12 @@ KNEX.bodies = function (s) {
   // --- props with mass become bodies of their own (a mouse, a phone, a weight)
   (s.extras || []).forEach(function (X) {
     if (!X.mass) return;
-    var m = X.mass, w = X.size[0], d = X.size[1], h = X.size[2];
-    var I = [[m*(d*d+h*h)/12,0,0],[0,m*(w*w+h*h)/12,0],[0,0,m*(w*w+d*d)/12]];
+    var m = X.mass, w = X.size[0], d = X.size[1], h = X.size[2], I;
+    if (X.shape === "sphere") { var r = w / 2, i = 0.4 * m * r * r; I = [[i,0,0],[0,i,0],[0,0,i]]; }
+    else if (X.shape === "cylinder") {                              // axis along z
+      var rc = w / 2, it = m * (3 * rc * rc + h * h) / 12, ia = 0.5 * m * rc * rc;
+      I = [[it,0,0],[0,it,0],[0,0,ia]];
+    } else I = [[m*(d*d+h*h)/12,0,0],[0,m*(w*w+h*h)/12,0],[0,0,m*(w*w+d*d)/12]];
     var b = { parts: [], m: m, c: X.pos.slice(), I: I, prop: X, zmin: X.pos[2] - h / 2, zmax: X.pos[2] + h / 2, fixed: X.fixed };
     bodies.push(b);
   });
@@ -868,6 +909,8 @@ KNEX.phys.world = function (s, opts) {
     var fixed = b.fixed || anchored || (pinBase && !b.prop && b.id === baseBody.id);
     var B = new P.Body(b.id, b.m / 1000, V.mul(b.c, MM), I, fixed);
     B.src = b; B.prop = b.prop || null;
+    if (b.prop && b.prop.vel) B.v = b.prop.vel.slice();              // thrown, not just dropped
+    if (b.prop && b.prop.spin) B.w = b.prop.spin.slice();
     var surf = KNEX.SURFACES[opts.surface] || null;
     B.mu = b.prop && b.prop.mu != null ? b.prop.mu
          : b.prop ? (surf ? surf.mu : (opts.mu != null ? opts.mu : D.muDesk))
@@ -929,11 +972,24 @@ KNEX.phys.world = function (s, opts) {
   bodies.forEach(function (B) {
     B.feat = [];
     if (B.prop) {
-      var pd = B.prop.pad || [0, 0];
+      var pd = B.prop.pad || [0, 0], sh = B.prop.shape || "box";
       var h = V.mul(V.add(B.prop.size, [2 * pd[0], 2 * pd[1], 0]), 0.5 * MM);
-      for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) for (var sz = -1; sz <= 1; sz += 2)
-        B.feat.push({ p: V.add(B.x, [sx * h[0], sy * h[1], sz * h[2]]), r: 0 });
-      B.box = h;
+      if (sh === "sphere") {
+        B.radius = h[0]; B.feat.push({ p: B.x.slice(), r: h[0] });
+      } else if (sh === "cylinder") {
+        B.cyl = { r: h[0], h: h[2] };                                // axis along the body's local z
+        for (var k = 0; k < 8; k++) {                                // rim points at both ends, plus the centres
+          var a = k * Math.PI / 4;
+          B.feat.push({ p: V.add(B.x, [Math.cos(a) * h[0], Math.sin(a) * h[0], -h[2]]), r: 0 });
+          B.feat.push({ p: V.add(B.x, [Math.cos(a) * h[0], Math.sin(a) * h[0], h[2]]), r: 0 });
+        }
+        B.feat.push({ p: V.add(B.x, [0, 0, -h[2]]), r: 0 });
+        B.feat.push({ p: V.add(B.x, [0, 0, h[2]]), r: 0 });
+      } else {
+        for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) for (var sz = -1; sz <= 1; sz += 2)
+          B.feat.push({ p: V.add(B.x, [sx * h[0], sy * h[1], sz * h[2]]), r: 0 });
+        B.box = h;
+      }
       return;
     }
     B.src.parts.forEach(function (p) {
@@ -949,7 +1005,10 @@ KNEX.phys.world = function (s, opts) {
       }
     });
   });
-  bodies.forEach(function (B) { B.rBound = B.feat.reduce(function (u, f) { return Math.max(u, V.dist(f.p, B.x) + f.r); }, 0); });
+  bodies.forEach(function (B) {
+    B.rBound = B.feat.reduce(function (u, f) { return Math.max(u, V.dist(f.p, B.x) + f.r); }, 0);
+    if (B.cyl) B.rBound = Math.max(B.rBound, Math.hypot(B.cyl.r, B.cyl.h));
+  });
   var W0 = { bodies: bodies, joints: joints, beams: beams, loads: loads, contacts: [], ground: ground, surface: opts.surface || null,
            base: baseBody.id, solved: s, t: 0, iters: opts.iters || 14, pinBase: pinBase,
            gravity: opts.gravity != null ? opts.gravity : P.G,
@@ -1122,6 +1181,7 @@ KNEX.phys.world = function (s, opts) {
         G.lam = lam / dt;
       });
       W.contacts.forEach(function (c) {
+        if (c.pen < -0.0002) return;                                 // still clear of the surface: nothing to push against
         var A = c.A, B = c.B, n = c.n;
         var bias = -BETA / dt * Math.max(0, c.pen - SLOP);
         var vrel = B ? V.sub(A.pointVel(c.r), B.pointVel(c.rB)) : A.pointVel(c.r);
@@ -1144,6 +1204,18 @@ KNEX.phys.world = function (s, opts) {
         });
       });
     }
+    // ---- push overlapping contacts apart. Velocity alone leaves a heavy prop sitting a few millimetres
+    // into the table, because the impulse only has to stop it, not lift it back out.
+    W.contacts.forEach(function (c) {
+      if (c.lam <= 0) return;
+      var A = c.A, B = c.B;
+      var pen = Math.min(c.pen - SLOP, 0.0008);            // at most 0.8 mm a step, or it bounces out of contact
+      if (pen <= 0) return;
+      var wsum = A.invM + (B ? B.invM : 0); if (wsum < 1e-12) return;
+      var push = 0.25 * pen / wsum;
+      if (!A.fixed) A.x = V.add(A.x, V.mul(c.n, push * A.invM));
+      if (B && !B.fixed) B.x = V.sub(B.x, V.mul(c.n, push * B.invM));
+    });
     // ---- integrate positions
     bodies.forEach(function (b) {
       if (b.fixed) return;
@@ -1201,8 +1273,8 @@ KNEX.phys.world = function (s, opts) {
 /* Contacts, regenerated each step: every feature point against the desk, and against every prop box. */
 KNEX.phys.collide = function (W) {
   var V = KNEX.V, P = KNEX.phys, C = [];
-  var props = W.bodies.filter(function (b) { return b.prop || b.ball; });
-  props.forEach(function (Q) { Q.rBound = Q.box ? V.norm(Q.box) : Q.radius; });
+  var props = W.bodies.filter(function (b) { return b.prop || b.ball; });   // anything a part can hit
+  props.forEach(function (Q) { Q.rBound = Q.box ? V.norm(Q.box) : Q.cyl ? Math.hypot(Q.cyl.r, Q.cyl.h) : Q.radius; });
   W.bodies.forEach(function (B) {
     var moving = !B.fixed;
     var nearDesk = moving && B.x[2] - B.rBound <= W.ground + 0.001;
@@ -1217,6 +1289,18 @@ KNEX.phys.collide = function (W) {
       }
       nearProps.forEach(function (Q) {                           // prop boxes
         if (V.dist(p, Q.x) > Q.rBound + f.r) return;
+        if (Q.cyl) {                                             // cylinder: the side, or a flat end
+          var dc = V.sub(p, Q.x), qc = Q.q, lc = P.qrot([-qc[0], -qc[1], -qc[2], qc[3]], dc);
+          var radial = Math.hypot(lc[0], lc[1]), axial = Math.abs(lc[2]);
+          var overR = Q.cyl.r + f.r - radial, overA = Q.cyl.h + f.r - axial;
+          if (overR <= 0 || overA <= 0) return;
+          var nl, pen3;
+          if (overR < overA && radial > 1e-9) { nl = [lc[0] / radial, lc[1] / radial, 0]; pen3 = overR; }
+          else { nl = [0, 0, lc[2] < 0 ? -1 : 1]; pen3 = overA; }
+          var n3 = P.qrot(qc, nl);
+          C.push({ A: B, B: Q, p: p, r: V.sub(p, B.x), rB: V.sub(p, Q.x), n: n3, pen: pen3, mu: Math.min(B.mu, Q.mu), lam: 0, lt: [0, 0] });
+          return;
+        }
         if (Q.radius) {                                          // sphere prop: simple point-vs-sphere
           var dd = V.sub(p, Q.x), dist = V.norm(dd), pen2 = Q.radius + f.r - dist;
           if (pen2 > -0.003 && dist > 1e-9) {

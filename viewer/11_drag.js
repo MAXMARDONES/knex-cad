@@ -28,6 +28,7 @@ function dragInput() {
   DRAG.on = grabsActive().length > 0;
   DRAG.N = loads.reduce(function (u, l) { return u + KNEX.V.norm(l.F); }, 0);
   DRAG.grab = loads.length ? loads[0].at : null;
+  if (window.PALM && PALM.length) loads = loads.concat(PALM);        // open palms push as well as pinches
   return loads.length ? { loads: loads } : {};
 }
 function grabAt(body, worldPoint, source) {

@@ -210,6 +210,8 @@ the browser run the same source.
 | **Flexi rods** | buckle at a near-constant `π²EI/L²` |
 | **Contact** | table, props and balls, Coulomb friction per surface: cloth pad, rubber pad, wood, laminate, glass |
 | **Mechanisms** | motors with a torque limit, gear meshes, strings over pulleys, rubber bands, tan-clip locks, anchors, hung weights |
+| **Props** | a catalogue with real dimensions and mass: phone, book, steel counterweight, water bottle, can, golf, tennis and steel balls, a coin. Boxes, spheres and cylinders, each with its own contact test. Throw them with `vel=` |
+| **Flex** | `FLEX` at the top of a build makes every rod a bending beam. A metre of pole then sags 34 mm and whips when you wave it |
 | **Failure** | a joint loaded past what the plastic holds pops, live. Capacity is directional: strong pushing a rod into its socket, weak prying it out of the plane |
 
 ```bash
@@ -259,7 +261,12 @@ the agent works.
 - **Drag any part with the cursor** and a force is applied there, while it runs. Drag the background to
   orbit, shift-drag to pan.
 - **Or use your hands.** Tick *hands* and the webcam tracks 21 landmarks per hand: pinch to grab, move to
-  pull, roll your wrist to twist. Two hands grab two parts at once, which is what you want for a lever.
+  pull, roll your wrist to twist, open your palm to push. Two hands work two parts at once, which is what
+  you want for a lever.
+- **Camera presets and shortcuts.** `1`–`5` for iso, front, right, top and low, `f` to frame everything,
+  space to run, `r` to reset, `s` for stress, `h` for hands, `[` and `]` to step the build.
+- **A Bodies panel** listing everything that can move on its own, with what it is made of and what it
+  weighs, and the props with their real mass. Click one to fly to it.
 - A **step slider** that builds the model up, with the parts for that step and a camera that walks around.
 - A **stress view** that colours bending rods and bearings by how close they are to letting go.
 - Joint loads, rod forces, and what broke, updating as it runs.
@@ -430,6 +437,7 @@ else works with the network off.
 node cli.js span 0,0,0 0,3,0      # what rod fits a distance, or how to split it
 node cli.js spring                # stiffness of every spring configuration
 node cli.js arc --rod blue        # how tightly a chain of rods curves before the sockets let go
+node cli.js props                 # the prop catalogue: real sizes, masses and friction
 node cli.js parts --json          # the whole catalogue as JSON
 ./scripts/patterns.sh             # validate and redraw the pattern library
 python3 scripts/catalog.py        # redraw the part catalogue
@@ -482,7 +490,8 @@ certified values. `node cli.js parts` says which is which.
 - [x] Claude Code plugin: skill plus five slash commands, and AGENTS.md for Codex
 - [x] Modules with `MOD`/`USE`, and `Z` ports that check whether two sub-assemblies actually meet
 - [x] Live mode: hot reload, and a session feed of what the agent is doing
-- [x] Hand tracking: pinch to grab, pull and twist parts with two hands
+- [x] Hand tracking: pinch to grab, pull, twist and push with two hands
+- [x] Props with real mass, friction and collision shapes, and `FLEX` for things that should bend
 - [ ] Finite-element pass, for the force in every member of a rigid truss
 - [ ] Micro and Jumbo K'NEX ladders
 - [ ] Export to STL and to LDraw-style part lists

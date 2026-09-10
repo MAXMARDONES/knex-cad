@@ -43,6 +43,20 @@ if (file === "log") {                                    // post to a running li
   req.end(body);
   return;
 }
+if (file === "props") {                                  // what you can put on the table with the model
+  console.log("Props. Real dimensions in mm, real mass in grams, and friction for that material on a desk.");
+  console.log("Use one by name: `X phone 0,0,3`, or give your own size: `X thing 0,0,3 90,60,20 mass=140`.\n");
+  console.log("name             shape      size mm            mass    mu   what it is");
+  Object.keys(KNEX.PROPS).forEach(function (k) {
+    var p = KNEX.PROPS[k];
+    console.log("  " + k.padEnd(15) + p.shape.padEnd(10) + p.size.join(" x ").padEnd(19) +
+                (p.mass + " g").padStart(7) + "  " + String(p.mu).padStart(4) + "   " + p.note);
+  });
+  console.log("\nOptions: mass= mu= shape=box|sphere|cylinder pad=x,y fixed #hex");
+  console.log("         vel=x,y,z throws it (m/s), spin=x,y,z sets it turning (rad/s)");
+  console.log("A prop with a mass is a rigid body: it falls, slides, topples and collides with the model.");
+  process.exit(0);
+}
 if (file === "ports") {                                  // what a build offers other modules, and whether they fit
   var pos = args.filter(function (a) { return !isOpt(a); });
   if (!pos[1]) { console.error("usage: node cli.js ports build.knx"); process.exit(2); }
@@ -122,7 +136,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\"  |  node cli.js replay run.jsonl"); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx  |  node cli.js props  |  node cli.js live [b.knx] --open  |  node cli.js log \"...\"  |  node cli.js replay run.jsonl"); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");

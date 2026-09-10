@@ -19,6 +19,8 @@ KNEX.phys.world = function (s, opts) {
     var fixed = b.fixed || anchored || (pinBase && !b.prop && b.id === baseBody.id);
     var B = new P.Body(b.id, b.m / 1000, V.mul(b.c, MM), I, fixed);
     B.src = b; B.prop = b.prop || null;
+    if (b.prop && b.prop.vel) B.v = b.prop.vel.slice();              // thrown, not just dropped
+    if (b.prop && b.prop.spin) B.w = b.prop.spin.slice();
     var surf = KNEX.SURFACES[opts.surface] || null;
     B.mu = b.prop && b.prop.mu != null ? b.prop.mu
          : b.prop ? (surf ? surf.mu : (opts.mu != null ? opts.mu : D.muDesk))
@@ -80,11 +82,24 @@ KNEX.phys.world = function (s, opts) {
   bodies.forEach(function (B) {
     B.feat = [];
     if (B.prop) {
-      var pd = B.prop.pad || [0, 0];
+      var pd = B.prop.pad || [0, 0], sh = B.prop.shape || "box";
       var h = V.mul(V.add(B.prop.size, [2 * pd[0], 2 * pd[1], 0]), 0.5 * MM);
-      for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) for (var sz = -1; sz <= 1; sz += 2)
-        B.feat.push({ p: V.add(B.x, [sx * h[0], sy * h[1], sz * h[2]]), r: 0 });
-      B.box = h;
+      if (sh === "sphere") {
+        B.radius = h[0]; B.feat.push({ p: B.x.slice(), r: h[0] });
+      } else if (sh === "cylinder") {
+        B.cyl = { r: h[0], h: h[2] };                                // axis along the body's local z
+        for (var k = 0; k < 8; k++) {                                // rim points at both ends, plus the centres
+          var a = k * Math.PI / 4;
+          B.feat.push({ p: V.add(B.x, [Math.cos(a) * h[0], Math.sin(a) * h[0], -h[2]]), r: 0 });
+          B.feat.push({ p: V.add(B.x, [Math.cos(a) * h[0], Math.sin(a) * h[0], h[2]]), r: 0 });
+        }
+        B.feat.push({ p: V.add(B.x, [0, 0, -h[2]]), r: 0 });
+        B.feat.push({ p: V.add(B.x, [0, 0, h[2]]), r: 0 });
+      } else {
+        for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) for (var sz = -1; sz <= 1; sz += 2)
+          B.feat.push({ p: V.add(B.x, [sx * h[0], sy * h[1], sz * h[2]]), r: 0 });
+        B.box = h;
+      }
       return;
     }
     B.src.parts.forEach(function (p) {
@@ -100,7 +115,10 @@ KNEX.phys.world = function (s, opts) {
       }
     });
   });
-  bodies.forEach(function (B) { B.rBound = B.feat.reduce(function (u, f) { return Math.max(u, V.dist(f.p, B.x) + f.r); }, 0); });
+  bodies.forEach(function (B) {
+    B.rBound = B.feat.reduce(function (u, f) { return Math.max(u, V.dist(f.p, B.x) + f.r); }, 0);
+    if (B.cyl) B.rBound = Math.max(B.rBound, Math.hypot(B.cyl.r, B.cyl.h));
+  });
   var W0 = { bodies: bodies, joints: joints, beams: beams, loads: loads, contacts: [], ground: ground, surface: opts.surface || null,
            base: baseBody.id, solved: s, t: 0, iters: opts.iters || 14, pinBase: pinBase,
            gravity: opts.gravity != null ? opts.gravity : P.G,

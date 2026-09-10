@@ -164,6 +164,7 @@
         G.lam = lam / dt;
       });
       W.contacts.forEach(function (c) {
+        if (c.pen < -0.0002) return;                                 // still clear of the surface: nothing to push against
         var A = c.A, B = c.B, n = c.n;
         var bias = -BETA / dt * Math.max(0, c.pen - SLOP);
         var vrel = B ? V.sub(A.pointVel(c.r), B.pointVel(c.rB)) : A.pointVel(c.r);
@@ -186,6 +187,18 @@
         });
       });
     }
+    // ---- push overlapping contacts apart. Velocity alone leaves a heavy prop sitting a few millimetres
+    // into the table, because the impulse only has to stop it, not lift it back out.
+    W.contacts.forEach(function (c) {
+      if (c.lam <= 0) return;
+      var A = c.A, B = c.B;
+      var pen = Math.min(c.pen - SLOP, 0.0008);            // at most 0.8 mm a step, or it bounces out of contact
+      if (pen <= 0) return;
+      var wsum = A.invM + (B ? B.invM : 0); if (wsum < 1e-12) return;
+      var push = 0.25 * pen / wsum;
+      if (!A.fixed) A.x = V.add(A.x, V.mul(c.n, push * A.invM));
+      if (B && !B.fixed) B.x = V.sub(B.x, V.mul(c.n, push * B.invM));
+    });
     // ---- integrate positions
     bodies.forEach(function (b) {
       if (b.fixed) return;

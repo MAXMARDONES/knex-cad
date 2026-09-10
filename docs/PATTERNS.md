@@ -31,6 +31,8 @@ Bigger builds you can open in the bench and take apart.
 |---|---|
 | ![](patterns/demo-mech.png) | **`builds/demo_mech.knx`** — a motor turning a gear pair, a lever locked to an axle by a tan clip, a rubber band pulling it back, and a ball on a string. Every mechanism the engine knows, in one rig. |
 | ![](patterns/demo-modules.png) | **`builds/demo_modules.knx`** — one tower module placed four times with `USE`, with `Z` ports saying where the deck attaches. `node cli.js ports` reports which gaps a rod already spans and what to bridge the rest with. |
+| ![](patterns/demo-props.png) | **`builds/demo_props.knx`** — the prop catalogue on a table: a phone, a book, a steel counterweight, a full water bottle, a can, three balls and a coin, each with its real size, mass, friction and shape. A steel ball is thrown at the tower the moment you press run. |
+| ![](patterns/demo-pole.png) | **`builds/demo_pole.knx`** — a metre of K'NEX pole with `FLEX` on, so every rod bends. It sags 34 mm under its own weight and whips when you wave the butt. Grab the tip with the mouse or your hand. |
 | ![](../docs/hero.png) | **`builds/rig.knx`** — the worked example: a two-axis tilt platform that stands over a mouse and pushes it. Sixteen build steps, a compliant fork, four zigzag centring springs. |
 
 ## Part catalogue

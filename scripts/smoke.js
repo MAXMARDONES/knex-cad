@@ -111,6 +111,14 @@ step("declared forces are pressable", function () {
     if (!isFinite(b.x[0]) || !isFinite(b.x[1]) || !isFinite(b.x[2])) throw new Error("body " + i + " went non-finite under load");
   });
 });
+step("the camera presets and the body panel work", function () {
+  ctx.setView("front"); ctx.setView("top"); ctx.setView("iso");
+  ctx.camReadout();
+  ctx.bodyTables();
+  var html = ctx.document.getElementById("bodyTable").innerHTML;
+  if (!html || html.indexOf("<tr") < 0) throw new Error("the body panel drew nothing");
+  ctx.flyToBody(0);
+});
 step("hand tracking degrades where there is no camera", function () {
   if (typeof ctx.handsStart !== "function") throw new Error("hand tracking did not load");
   ctx.handsStop();                                       // must be safe with no camera and no panel

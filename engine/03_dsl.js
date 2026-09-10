@@ -5,7 +5,10 @@
    S name kind x,y,z arm [ref]          side-on clip: x,y,z is the point ON the rod, arm points from hub to rod
    R a b [colour|flexi|flexi-colour]    rod between connectors (names) or points; colour inferred from length
    P x,y,z blue|silver                  spacer on the rod through that point
-   X label x,y,z sx,sy,sz [#hex] [mass=g] [mu=] [pad=x,y mm shim] [fixed]  prop box (mm); with mass it is a physical body
+   X name x,y,z [sx,sy,sz] [options]    a prop on the table. Name one from the catalogue (node cli.js props)
+                                        and its real size, mass, friction and shape are used; or give your
+                                        own size. Options: mass=g mu= shape=box|sphere|cylinder pad=x,y
+                                        vel=x,y,z (m/s, throw it) spin=x,y,z (rad/s) fixed #hex
    F name fx,fy,fz [label]              external force in newtons applied at that connector (a finger, a weight)
    E name a b [rest=mm] [k=N/mm]        rubber band: pulls only, never pushes
    Y name a b [via=c,d] [slack=mm]      string over guides: inextensible in tension, limp otherwise
@@ -18,9 +21,12 @@
    G name conn [teeth=]                 gear on that connector's axle; two gears that touch drive each other
    I kind=n colour=n ...                inventory available
    ! step title                         build step (everything below belongs to it)
+   FLEX [on|off]                        treat every rod as a bending beam, not as rigid structure.
+                                        A braced frame is rigid; a slender chain is not, and this is how
+                                        you get a pole that whips when you wave it.
    T title / U mm / # comment                                                                       */
 KNEX.parse = function (text) {
-  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
+  var V = KNEX.V, m = { title: "", U: KNEX.U, flex: false, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
   var names = {}, step = -1;
   function err(ln, s) { m.errors.push({ line: ln, msg: s }); }
   function pt(tok, ln) {                      // "x,y,z" | "NAME@x,y,z" (offset from a connector, units)
@@ -38,6 +44,7 @@ KNEX.parse = function (text) {
     var t = line.split(/\s+/), op = t[0];
     if (op === "T") { m.title = t.slice(1).join(" "); return; }
     if (op === "U") { m.U = Number(t[1]) || KNEX.U; return; }
+    if (op === "FLEX") { m.flex = t[1] !== "off"; return; }
     if (op === "!") { m.steps.push({ title: t.slice(1).join(" "), line: ln }); step = m.steps.length - 1; return; }
     if (op === "I") { t.slice(1).forEach(function (kv) { var p = kv.split("="); m.inventory[p[0]] = Number(p[1]); }); return; }
     if (op === "C" || op === "H" || op === "S") {
@@ -66,14 +73,24 @@ KNEX.parse = function (text) {
       m.rods.push({ a: A, b: B, color: col, flexi: flexi, beam: beam || flexi, line: ln, step: step }); return;
     }
     if (op === "P") { var q = pt(t[1], ln); if (!q) return; m.spacers.push({ at: q, size: t[2] || "blue", line: ln, step: step }); return; }
-    if (op === "X") { var q2 = pt(t[2], ln), sz = pt(t[3], ln); if (!q2 || !sz) return;
-      var x = { label: t[1], at: q2, size: sz, color: "#6B7280", mass: 0, mu: null, pad: [0, 0], fixed: false, line: ln, step: step };
-      t.slice(4).forEach(function (f) {
+    if (op === "X") {
+      var q2 = pt(t[2], ln); if (!q2) return;
+      var hasSize = t[3] && t[3].indexOf(",") >= 0 && t[3].split(",").length === 3 && t[3].split(",").every(function (n) { return isFinite(Number(n)); });
+      var sz = hasSize ? pt(t[3], ln) : null;
+      var cat = KNEX.PROPS[t[1]] || null;
+      if (!sz && !cat) return err(ln, "X " + t[1] + ": give a size sx,sy,sz, or use a name from the catalogue (node cli.js props)");
+      var x = { label: t[1], at: q2, size: sz || cat.size.slice(), color: cat ? cat.color : "#6B7280",
+                mass: cat ? cat.mass : 0, mu: cat ? cat.mu : null, shape: cat ? cat.shape : "box",
+                pad: [0, 0], vel: null, spin: null, fixed: false, line: ln, step: step };
+      t.slice(hasSize ? 4 : 3).forEach(function (f) {
         if (f[0] === "#") x.color = f;
         else if (f === "fixed") x.fixed = true;
         else if (f.indexOf("mass=") === 0) x.mass = Number(f.slice(5));
         else if (f.indexOf("mu=") === 0) x.mu = Number(f.slice(3));
         else if (f.indexOf("pad=") === 0) { var q = f.slice(4).split(",").map(Number); x.pad = [q[0] || 0, q.length > 1 ? q[1] : q[0] || 0]; }
+        else if (f.indexOf("shape=") === 0) { if (["box", "sphere", "cylinder"].indexOf(f.slice(6)) >= 0) x.shape = f.slice(6); else err(ln, "X: shape must be box, sphere or cylinder"); }
+        else if (f.indexOf("vel=") === 0) { var v1 = f.slice(4).split(",").map(Number); if (v1.length === 3 && v1.every(isFinite)) x.vel = v1; else err(ln, "X: vel=x,y,z in m/s"); }
+        else if (f.indexOf("spin=") === 0) { var v2 = f.slice(5).split(",").map(Number); if (v2.length === 3 && v2.every(isFinite)) x.spin = v2; else err(ln, "X: spin=x,y,z in rad/s"); }
         else err(ln, "X: unknown option '" + f + "'");
       });
       m.extras.push(x); return; }

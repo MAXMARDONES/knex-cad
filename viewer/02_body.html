@@ -14,12 +14,22 @@
     <div id="handsPanel">
       <video id="handsVideo" playsinline muted></video>
       <canvas id="handsCanvas" width="200" height="150"></canvas>
-      <div class="cap">pinch to grab · move to pull · roll your wrist to twist</div>
+      <div class="cap">pinch to grab · move to pull · roll to twist · open palm to push</div>
     </div>
     <div id="legend">
       <div>joint load / rod stress</div>
       <div class="bar"></div>
       <div class="ends"><span>slack</span><span>at the limit</span></div>
+    </div>
+    <div id="camBar">
+      <button data-view="iso" class="v" title="isometric (1)">iso</button>
+      <button data-view="front" class="v" title="front (2)">front</button>
+      <button data-view="right" class="v" title="right (3)">right</button>
+      <button data-view="top" class="v" title="top (4)">top</button>
+      <button data-view="low" class="v" title="low (5)">low</button>
+      <span class="sep"></span>
+      <button id="camFit" title="frame everything (F)">fit</button>
+      <span id="camRead"></span>
     </div>
     <div id="stepInfo"></div>
     <div id="bar">
@@ -44,6 +54,7 @@
       <button role="tab" aria-selected="true" data-tab="issues">Issues</button>
       <button role="tab" aria-selected="false" data-tab="parts">Parts</button>
       <button role="tab" aria-selected="false" data-tab="phys">Physics</button>
+      <button role="tab" aria-selected="false" data-tab="bodies">Bodies</button>
       <button role="tab" aria-selected="false" data-tab="live">Session</button>
       <button role="tab" aria-selected="false" data-tab="knx">Build file</button>
     </div>
@@ -74,6 +85,13 @@
       <table id="physJoints"></table>
       <table id="physBeams" style="margin-top:10px"></table>
       <pre id="physOut" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--muted);margin-top:10px"></pre>
+    </div>
+    <div class="panel" id="tab-bodies">
+      <div class="note">Everything that can move on its own. Parts welded together by sockets are one body;
+        a hub or a side-on clip is a real joint between two. Click one to fly to it.</div>
+      <table id="bodyTable"></table>
+      <div class="note" style="margin-top:12px">Props on the table, with their real mass and friction.</div>
+      <table id="propTable"></table>
     </div>
     <div class="panel" id="tab-live">
       <div class="row">

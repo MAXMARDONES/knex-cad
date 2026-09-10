@@ -45,6 +45,24 @@ var KNEX = (function () {
   };
   var RGB = { green: "#2E9E4F", white: "#ECECEA", blue: "#2563D9", yellow: "#F2C51D", red: "#D9302C", grey: "#8C9096",
               purple: "#7B4FB8", lgrey: "#B9BDC3", orange: "#F08A1D", dgrey: "#4A4E55", flexi: "#9B6BD6", spacer: "#3B82F6", silver: "#C0C4CA" };
+  /* Things you put on the table with the model. Real dimensions in mm, real mass in grams, and a
+     friction coefficient for that material sliding on a desk. Sources are everyday measurements:
+     a phone in a case, a full 500 ml PET bottle, a golf and a tennis ball, a 40 mm steel cube. */
+  var PROPS = {
+    phone:      { shape: "box",      size: [75, 160, 9],   mass: 190,  mu: 0.40, color: "#2B2F36", note: "a phone in a case" },
+    mouse:      { shape: "box",      size: [62, 117, 38],  mass: 85,   mu: 0.25, color: "#3B4252", note: "a wired optical mouse" },
+    book:       { shape: "box",      size: [148, 210, 22], mass: 260,  mu: 0.35, color: "#6B4A2F", note: "a paperback" },
+    weight:     { shape: "box",      size: [40, 40, 40],   mass: 500,  mu: 0.50, color: "#5A6068", note: "a 40 mm steel cube: the counterweight" },
+    weight2:    { shape: "box",      size: [50, 50, 50],   mass: 980,  mu: 0.50, color: "#4A5058", note: "a 50 mm steel cube, near a kilo" },
+    bottle:     { shape: "cylinder", size: [65, 65, 215],  mass: 520,  mu: 0.30, color: "#7FB8D8", note: "a full 500 ml water bottle" },
+    "bottle-empty": { shape: "cylinder", size: [65, 65, 215], mass: 22, mu: 0.30, color: "#AECFE2", note: "the same bottle, empty" },
+    can:        { shape: "cylinder", size: [66, 66, 115],  mass: 350,  mu: 0.30, color: "#B4483C", note: "a 330 ml can" },
+    ball:       { shape: "sphere",   size: [43, 43, 43],   mass: 46,   mu: 0.25, color: "#E9ECE6", note: "a golf ball" },
+    "ball-tennis": { shape: "sphere", size: [67, 67, 67],  mass: 58,   mu: 0.55, color: "#C8D93C", note: "a tennis ball: light and grippy" },
+    "ball-steel": { shape: "sphere", size: [25, 25, 25],   mass: 64,   mu: 0.20, color: "#8C9096", note: "a 25 mm steel ball bearing" },
+    coin:       { shape: "cylinder", size: [26, 26, 2.2],  mass: 8.5,  mu: 0.35, color: "#C8A93C", note: "a coin, for a light trigger" },
+    block:      { shape: "box",      size: [90, 90, 45],   mass: 120,  mu: 0.35, color: "#3B4252", note: "a plain test block" }
+  };
   // K'NEX gears: teeth -> pitch radius in mm (MIT measurements, KNEX.md 2.5)
   var GEARS = { 14: 10.9, 34: 26.6, 58: 44.5, 82: 64.0 };
   // what the rig and the mouse stand on. PTFE mouse feet against each surface; K'NEX parts are acetal.
@@ -55,6 +73,6 @@ var KNEX = (function () {
     "desk-laminate": { mu: 0.18, name: "laminate", muKnex: 0.28 },
     "glass": { mu: 0.12, name: "glass", muKnex: 0.20 }
   };
-  return { U: U, DIMS: DIMS, LADDER: LADDER, FLEXI: FLEXI, KINDS: KINDS, RGB: RGB, SURFACES: SURFACES, GEARS: GEARS,
+  return { U: U, DIMS: DIMS, LADDER: LADDER, FLEXI: FLEXI, KINDS: KINDS, RGB: RGB, SURFACES: SURFACES, GEARS: GEARS, PROPS: PROPS,
            ladder: function (c) { for (var i = 0; i < LADDER.length; i++) if (LADDER[i].color === c) return LADDER[i]; return null; } };
 })();

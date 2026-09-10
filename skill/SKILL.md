@@ -52,7 +52,8 @@ R  A B flexi-yellow            # a flexi rod: it buckles and bows
 H  P W8 0,-2,0 z               # hub on the rod through that point: a bearing that spins and slides
 S  C W8 1,-2,0 z               # connector clipped side-on to a rod: a friction pivot
 P  0.5,-2,0 silver             # spacer, 3.1 blue or 9.3 silver
-X  mouse 0,0,0.5 62,117,38 mass=85 mu=0.25 pad=2,0    # a prop that collides with the model
+X  phone 0,0,3                 # a prop from the catalogue: real size, mass, friction and shape
+X  ball -4,0,1.5 vel=2,0,0.4   # thrown at the model. knex-cad props lists them all
 O  ball 0,0,1.5 d=25 mass=40   # a ball
 F  DF 0,0,-3 finger front      # an external force you can press in the sim
 E  band A B rest=40            # rubber band: pulls only
@@ -148,6 +149,11 @@ appear there on their own; add your thinking with `knex-cad log --kind reasoning
 you looked at with `knex-cad log --kind image <file> "..."`. Post the reasoning before the change, not
 after: a transcript keeps only a signature for your thinking, not the text, so anything you do not post is
 gone. `knex-cad replay <transcript.jsonl>` rebuilds the rest of the feed afterwards.
+
+**When it should bend.** A braced frame is rigid and the engine treats it that way. A slender chain of
+rods is not: put `FLEX` at the top of the build and every rod becomes a bending beam. A metre of K'NEX
+pole then sags about 34 mm under its own weight and whips when you wave it, which is what the real one
+does. Flex costs a body per rod, so use it on the slender part, not on a frame.
 
 **When the shape is not a lattice.** A cat, a tree, a curve: source reference images first and pin the real
 dimensions, then approximate. Curvature comes from a chain of bending rods (`beam`) through straight

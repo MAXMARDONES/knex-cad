@@ -92,8 +92,12 @@ KNEX.bodies = function (s) {
   // --- props with mass become bodies of their own (a mouse, a phone, a weight)
   (s.extras || []).forEach(function (X) {
     if (!X.mass) return;
-    var m = X.mass, w = X.size[0], d = X.size[1], h = X.size[2];
-    var I = [[m*(d*d+h*h)/12,0,0],[0,m*(w*w+h*h)/12,0],[0,0,m*(w*w+d*d)/12]];
+    var m = X.mass, w = X.size[0], d = X.size[1], h = X.size[2], I;
+    if (X.shape === "sphere") { var r = w / 2, i = 0.4 * m * r * r; I = [[i,0,0],[0,i,0],[0,0,i]]; }
+    else if (X.shape === "cylinder") {                              // axis along z
+      var rc = w / 2, it = m * (3 * rc * rc + h * h) / 12, ia = 0.5 * m * rc * rc;
+      I = [[it,0,0],[0,it,0],[0,0,ia]];
+    } else I = [[m*(d*d+h*h)/12,0,0],[0,m*(w*w+h*h)/12,0],[0,0,m*(w*w+d*d)/12]];
     var b = { parts: [], m: m, c: X.pos.slice(), I: I, prop: X, zmin: X.pos[2] - h / 2, zmax: X.pos[2] + h / 2, fixed: X.fixed };
     bodies.push(b);
   });
