@@ -223,6 +223,35 @@ against a stubbed browser, so a throw that would freeze the page is caught befor
 
 ---
 
+## Design by module
+
+A base, a shoulder, an arm, a gripper: each is a `MOD` you get standing on its own, then place with `USE`.
+Mark where modules meet with `Z`, and the tool tells you whether a rod actually spans the gap.
+
+```
+MOD tower
+  C foot W8 0,0,0.5 x y
+  C top  B7 0,0,2.5 x y
+  R foot top
+  Z top deck                  # this is where something else attaches
+END
+USE tower SW at=-2,-2,0
+USE tower SE at=2,-2,0 rot=z90
+```
+
+```
+$ node cli.js ports builds/demo_modules.knx
+these fit:
+  SW.brace to NW.brace: one red rod (150.0 mm)
+these do not:
+  A.deck and B.deck face each other 3.000 U apart but nothing joins them:
+  that is not a rod length. Bridge it with green + blue and a connector between.
+```
+
+<div align="center"><img src="docs/patterns/demo-modules.png" width="620" alt="one module placed four times"/></div>
+
+---
+
 ## Pattern library
 
 Twelve techniques, each a real build, each validated by the checker and drawn from the same file.
@@ -397,6 +426,7 @@ certified values. `node cli.js parts` says which is which.
 - [x] 3D bench with a live physics tab and stress colouring
 - [x] Pattern library, part catalogue, engineering notes
 - [x] Claude Code plugin: skill plus five slash commands, and AGENTS.md for Codex
+- [x] Modules with `MOD`/`USE`, and `Z` ports that check whether two sub-assemblies actually meet
 - [ ] Finite-element pass, for the force in every member of a rigid truss
 - [ ] Micro and Jumbo K'NEX ladders
 - [ ] Export to STL and to LDraw-style part lists

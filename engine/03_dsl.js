@@ -14,12 +14,13 @@
    O name x,y,z [d=mm] [mass=g] [mu=]   ball: a sphere with mass that rolls and collides
    A conn                               anchor: clamp that connector to the table, so the rig cannot tip or slide
    W name conn mass=g                   weight hung on that connector: ballast, a counterweight, a test load
+   Z conn [label]                       port: this connector is where another module attaches
    G name conn [teeth=]                 gear on that connector's axle; two gears that touch drive each other
    I kind=n colour=n ...                inventory available
    ! step title                         build step (everything below belongs to it)
    T title / U mm / # comment                                                                       */
 KNEX.parse = function (text) {
-  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], inventory: {}, errors: [] };
+  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
   var names = {}, step = -1;
   function err(ln, s) { m.errors.push({ line: ln, msg: s }); }
   function pt(tok, ln) {                      // "x,y,z" | "NAME@x,y,z" (offset from a connector, units)
@@ -110,6 +111,10 @@ KNEX.parse = function (text) {
       if (!w.name || !w.conn) return err(ln, "W needs: name connector");
       t.slice(3).forEach(function (f) { if (f.indexOf("mass=") === 0) w.mass = Number(f.slice(5)); else err(ln, "W: unknown option '" + f + "'"); });
       m.weights.push(w); return;
+    }
+    if (op === "Z") {
+      if (!t[1]) return err(ln, "Z needs a connector");
+      m.ports.push({ conn: t[1], label: t.slice(2).join(" ") || t[1], line: ln, step: step }); return;
     }
     if (op === "L") { if (!t[1]) return err(ln, "L needs a connector"); m.locks.push({ conn: t[1], line: ln }); return; }
     if (op === "G") {

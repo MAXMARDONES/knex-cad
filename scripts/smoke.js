@@ -95,8 +95,10 @@ step("every build step draws, and hides the later ones", function () {
     prev = k;
   }
   if (prev !== all) throw new Error("the last step does not show the whole model");
-  el.value = String(1); ctx.applyFilters();
-  if (visible() >= all) throw new Error("step 1 shows the whole model: the step filter is not hiding anything");
+  if (n > 1) {                                            // a one-step build shows everything at step 1, correctly
+    el.value = String(1); ctx.applyFilters();
+    if (visible() >= all) throw new Error("step 1 shows the whole model: the step filter is not hiding anything");
+  }
   el.value = String(n); ctx.applyFilters();
 });
 step("the animation frame runs", function () { ctx.animate(); });

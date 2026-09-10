@@ -43,6 +43,34 @@ KNEX.check = function (m, s) {
     if (!R.joints.length) issue("warn", R.line, "rod " + R.color + " line " + R.line + " is loose");
     else if (ends === 0 && mid === 1) issue("warn", R.line, "rod " + R.color + " line " + R.line + " hangs from one hub only (needs a cap or a second connector)");
   });
+  // ---- module ports: two that face each other are meant to join. Say whether they can, and with what.
+  var ports = s.ports || [];
+  s.portFits = []; s.portGaps = [];
+  for (var pi = 0; pi < ports.length; pi++) for (var pj = pi + 1; pj < ports.length; pj++) {
+    var A = ports[pi], B = ports[pj];
+    if (A.module && B.module && A.module === B.module) continue;          // same module: not an interface
+    var d = V.dist(A.pos, B.pos);
+    if (d < 1 || d > KNEX.U * 6.5) continue;
+    var joined = s.rods.some(function (R) {
+      return R.joints.some(function (j) { return j.conn === A.conn; }) && R.joints.some(function (j) { return j.conn === B.conn; });
+    });
+    if (joined) continue;
+    var u = V.unit(V.sub(B.pos, A.pos));
+    function faces(P, dir) { return P.dirs.some(function (x) { return V.angleDeg(x, dir) < 25; }); }
+    if (!faces(A, u) || !faces(B, V.mul(u, -1))) continue;                // not pointing at each other: not meant to join
+    var fit = KNEX.LADDER.filter(function (l) { return Math.abs(l.c2c - d) < D.tolLen; })[0];
+    var aim = A.dirs.some(function (x) { return V.angleDeg(x, u) < 8; }) && B.dirs.some(function (x) { return V.angleDeg(x, V.mul(u, -1)) < 8; });
+    if (fit && aim) { s.portFits.push({ a: A.label, b: B.label, rod: fit.color, d: d }); continue; }
+    var split = [];
+    KNEX.LADDER.forEach(function (x) { KNEX.LADDER.forEach(function (y) {
+      if (x.c2c <= y.c2c && Math.abs(x.c2c + y.c2c - d) < D.tolLen) split.push(x.color + " + " + y.color); }); });
+    var msg = "ports " + A.label + " and " + B.label + " face each other " + (d / KNEX.U).toFixed(3) + " U apart (" + d.toFixed(1) + " mm) but nothing joins them: ";
+    msg += fit ? "a " + fit.color + " rod is the right length, but neither socket points straight at the other."
+         : split.length ? "that is not a rod length. Bridge it with " + split.join(" or ") + " and a connector between."
+         : "that is not a rod length, and no pair of rods adds up to it. Move one module onto the lattice.";
+    s.portGaps.push({ a: A.label, b: B.label, d: d, msg: msg });
+    issue("warn", A.line, msg);
+  }
   // parts list + inventory
   var parts = {};
   s.conns.forEach(function (K) { parts[K.kind] = (parts[K.kind] || 0) + 1; });

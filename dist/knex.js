@@ -123,6 +123,95 @@ KNEX.V = (function () {
   };
   return V;
 })();
+/* Modules: design a sub-assembly once, place it many times.
+     MOD leg              define; everything until END is the module's body
+       C A W8 0,0,0
+       R A ^FRAME         a ^name refers OUT of the module, to something already placed
+     END
+     USE leg L1 at=-2,-2,0
+     USE leg L2 at=2,-2,0 rot=z180 mirror=x
+   Names inside become prefix.name, so a module can be placed as often as you like.
+   Rotations are quarter turns about an axis, because anything else leaves the lattice. */
+KNEX.expand = function (text) {
+  var V = KNEX.V, out = [], mods = {}, cur = null, errors = [];
+  function rot90(p, axis, times) {
+    var q = p.slice();
+    for (var i = 0; i < times; i++) {
+      if (axis === "z") q = [-q[1], q[0], q[2]];
+      else if (axis === "x") q = [q[0], -q[2], q[1]];
+      else q = [q[2], q[1], -q[0]];
+    }
+    return q;
+  }
+  function xform(p, t) {
+    var q = p.slice();
+    if (t.mirror) { var ax = "xyz".indexOf(t.mirror); q[ax] = -q[ax]; }
+    if (t.rot) q = rot90(q, t.rot.axis, t.rot.times);
+    return [q[0] + t.at[0], q[1] + t.at[1], q[2] + t.at[2]];
+  }
+  function xdir(tok, t) {                                   // a direction: rotate and mirror, never translate
+    var v = V.axis(tok); if (!v) return tok;
+    var q = v.slice();
+    if (t.mirror) { var ax = "xyz".indexOf(t.mirror); q[ax] = -q[ax]; }
+    if (t.rot) q = rot90(q, t.rot.axis, t.rot.times);
+    return q.map(function (n) { return Math.abs(n) < 1e-9 ? 0 : Number(n.toFixed(6)); }).join(",");
+  }
+  function isPoint(tok) { return tok && tok.indexOf(",") >= 0 && tok.split(",").length === 3 && tok.split(",").every(function (n) { return isFinite(Number(n)); }); }
+  function nameOf(tok, t, defined) {
+    if (tok[0] === "^") return tok.slice(1);                // reach outside the module
+    return defined[tok] ? t.prefix + "." + tok : tok;
+  }
+  function place(mod, t, ln) {
+    var defined = {};
+    mod.forEach(function (l) { var k = l.trim().split(/\s+/); if (["C", "H", "S"].indexOf(k[0]) >= 0 && k[1]) defined[k[1]] = 1; });
+    mod.forEach(function (raw) {
+      var k = raw.trim().split(/\s+/), op = k[0];
+      function P(i) { if (k[i] && isPoint(k[i])) k[i] = xform(k[i].split(",").map(Number), t).join(","); }
+      function D(i) { if (k[i]) k[i] = xdir(k[i], t); }
+      function N(i) { if (k[i]) k[i] = nameOf(k[i], t, defined); }
+      if (op === "C") { N(1); P(3); D(4); D(5); }
+      else if (op === "H") { N(1); P(3); D(4); }
+      else if (op === "S") { N(1); P(3); D(4); D(5); }
+      else if (op === "R") { for (var i = 1; i <= 2; i++) { if (isPoint(k[i])) P(i); else N(i); } }
+      else if (op === "P" || op === "O") { P(1); }
+      else if (op === "X") { P(2); }
+      else if (op === "F") { N(1); P(2); }
+      else if (op === "E" || op === "Y") { N(1); N(2); N(3); }
+      else if (op === "M" || op === "G") { N(1); N(2); }
+      else if (op === "L" || op === "A" || op === "Z") { N(1); }
+      else if (op === "W") { N(1); N(2); }
+      out.push(k.join(" "));
+    });
+  }
+  text.split(/\r?\n/).forEach(function (raw, i) {
+    var ln = i + 1, line = raw.replace(/(^|\s)#(?![0-9a-fA-F]{3,8}(\s|$)).*$/, "").trim();
+    var t = line.split(/\s+/);
+    if (t[0] === "MOD") {
+      if (cur) errors.push({ line: ln, msg: "MOD " + t[1] + " inside MOD " + cur.name });
+      cur = { name: t[1], body: [] }; mods[t[1]] = cur.body; return;
+    }
+    if (t[0] === "END") { if (!cur) errors.push({ line: ln, msg: "END without MOD" }); cur = null; return; }
+    if (cur) { if (line) cur.body.push(line); return; }
+    if (t[0] === "USE") {
+      var mod = mods[t[1]];
+      if (!mod) { errors.push({ line: ln, msg: "USE: no module named '" + t[1] + "'" }); return; }
+      if (!t[2]) { errors.push({ line: ln, msg: "USE " + t[1] + ": needs a name prefix" }); return; }
+      var tr = { prefix: t[2], at: [0, 0, 0], rot: null, mirror: null };
+      t.slice(3).forEach(function (o) {
+        if (o.indexOf("at=") === 0) { var p = o.slice(3).split(",").map(Number); if (p.length === 3 && p.every(isFinite)) tr.at = p; else errors.push({ line: ln, msg: "USE: bad at=" }); }
+        else if (o.indexOf("rot=") === 0) {
+          var m = /^([xyz])(90|180|270)$/.exec(o.slice(4));
+          if (m) tr.rot = { axis: m[1], times: Number(m[2]) / 90 }; else errors.push({ line: ln, msg: "USE: rot must be x90, z180 and so on (quarter turns keep the lattice)" });
+        } else if (o.indexOf("mirror=") === 0) { if ("xyz".indexOf(o.slice(7)) >= 0) tr.mirror = o.slice(7); else errors.push({ line: ln, msg: "USE: mirror must be x, y or z" }); }
+        else errors.push({ line: ln, msg: "USE: unknown option '" + o + "'" });
+      });
+      place(mod, tr, ln); return;
+    }
+    out.push(raw);
+  });
+  if (cur) errors.push({ line: 0, msg: "MOD " + cur.name + " is never closed with END" });
+  return { text: out.join("\n"), errors: errors, modules: Object.keys(mods) };
+};
 /* .knx parser. One part per line, coordinates in lattice units (U = 37.5 mm) unless the U directive changes it.
    C name kind x,y,z [normal [ref]]     connector. LEAVE THE NORMAL OUT and the plane is worked out from the
                                         rods you attach; you are told if they are not coplanar. Any point may be NAME@dx,dy,dz
@@ -139,12 +228,13 @@ KNEX.V = (function () {
    O name x,y,z [d=mm] [mass=g] [mu=]   ball: a sphere with mass that rolls and collides
    A conn                               anchor: clamp that connector to the table, so the rig cannot tip or slide
    W name conn mass=g                   weight hung on that connector: ballast, a counterweight, a test load
+   Z conn [label]                       port: this connector is where another module attaches
    G name conn [teeth=]                 gear on that connector's axle; two gears that touch drive each other
    I kind=n colour=n ...                inventory available
    ! step title                         build step (everything below belongs to it)
    T title / U mm / # comment                                                                       */
 KNEX.parse = function (text) {
-  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], inventory: {}, errors: [] };
+  var V = KNEX.V, m = { title: "", U: KNEX.U, steps: [], conns: [], rods: [], spacers: [], extras: [], loads: [], tendons: [], motors: [], locks: [], gears: [], balls: [], anchors: [], weights: [], ports: [], inventory: {}, errors: [] };
   var names = {}, step = -1;
   function err(ln, s) { m.errors.push({ line: ln, msg: s }); }
   function pt(tok, ln) {                      // "x,y,z" | "NAME@x,y,z" (offset from a connector, units)
@@ -235,6 +325,10 @@ KNEX.parse = function (text) {
       if (!w.name || !w.conn) return err(ln, "W needs: name connector");
       t.slice(3).forEach(function (f) { if (f.indexOf("mass=") === 0) w.mass = Number(f.slice(5)); else err(ln, "W: unknown option '" + f + "'"); });
       m.weights.push(w); return;
+    }
+    if (op === "Z") {
+      if (!t[1]) return err(ln, "Z needs a connector");
+      m.ports.push({ conn: t[1], label: t.slice(2).join(" ") || t[1], line: ln, step: step }); return;
     }
     if (op === "L") { if (!t[1]) return err(ln, "L needs a connector"); m.locks.push({ conn: t[1], line: ln }); return; }
     if (op === "G") {
@@ -382,7 +476,7 @@ KNEX.solve = function (m) {
         else if (K.pair && Math.abs(V.dot(away, out.byName[K.pair].n)) < 0.08) { /* the other half of the pair holds it */ }
         else issue("error", K, K.name + ": the " + rod.color + " rod (line " + rod.line + ") ends at its centre but " + bestA.toFixed(0) + " deg off every slot" + (K.pair ? ", and its 3D partner " + K.pair + " cannot hold it either" : ""));
         }
-      } else if (q.t > 0.01 && q.t < 0.99 && !rod.beam) {
+      } else if (q.t > 0.01 && q.t < 0.99) {
         if (q.d < D.tolPos && along) { j = { type: "hole", t: q.t }; if (K.used.hole) issue("error", K, K.name + ": two rods through the hub"); K.used.hole = rod.line; }
         else if (along && Math.abs(q.d - D.sideR) < D.tolLen) {
           var toRod = V.unit(V.sub(q.q, K.pos)), sk = -1, sa = 1e9;
@@ -394,7 +488,7 @@ KNEX.solve = function (m) {
           if (!rod.ridges) issue("error", K, K.name + ": side-on onto a green rod is impossible (no ridges)");
           if (K.used["s" + sk]) issue("error", K, K.name + ": slot " + sk + " already used");
           K.used["s" + sk] = rod.line;
-        } else if (q.d < D.connR && Math.abs(V.dot(V.sub(q.q, K.pos), K.n)) < D.connT) {
+        } else if (!rod.beam && q.d < D.connR && Math.abs(V.dot(V.sub(q.q, K.pos), K.n)) < D.connT) {
           issue("error", K, K.name + " collides with the " + rod.color + " rod (line " + rod.line + "): " + q.d.toFixed(1) + " mm from the hub, not a joint");
         }
       }
@@ -465,6 +559,15 @@ KNEX.solve = function (m) {
     if (!byName[Wt.conn]) { issue("error", Wt, "W " + Wt.name + ": connector " + Wt.conn + " was not placed"); return null; }
     return { name: Wt.name, conn: Wt.conn, mass: Wt.mass, pos: byName[Wt.conn].pos, line: Wt.line, step: Wt.step };
   }).filter(Boolean);
+  out.ports = (m.ports || []).map(function (Z) {
+    var K = byName[Z.conn];
+    if (!K) { issue("error", Z, "Z: connector " + Z.conn + " was not placed"); return null; }
+    var used = {}; K.joints.forEach(function (j) { if (j.slot != null) used[j.slot] = 1; });
+    var free = KNEX.KINDS[K.kind].slots.filter(function (k) { return !used[k]; });
+    var mod = Z.conn.indexOf(".") > 0 ? Z.conn.split(".")[0] : null;
+    return { conn: Z.conn, label: (mod ? mod + "." : "") + Z.label, pos: K.pos, n: K.n, kind: K.kind, free: free,
+             dirs: free.map(function (k) { return K.slotDir(k); }), module: mod, line: Z.line };
+  }).filter(Boolean);
   out.balls = (m.balls || []).map(function (O) {
     var p = point(O.at); if (!p) { issue("error", O, "O " + O.label + ": bad position"); return null; }
     return { label: O.label, pos: p, d: O.d, mass: O.mass, mu: O.mu, color: O.color || "#B8541F", line: O.line, step: O.step };
@@ -516,6 +619,34 @@ KNEX.check = function (m, s) {
     if (!R.joints.length) issue("warn", R.line, "rod " + R.color + " line " + R.line + " is loose");
     else if (ends === 0 && mid === 1) issue("warn", R.line, "rod " + R.color + " line " + R.line + " hangs from one hub only (needs a cap or a second connector)");
   });
+  // ---- module ports: two that face each other are meant to join. Say whether they can, and with what.
+  var ports = s.ports || [];
+  s.portFits = []; s.portGaps = [];
+  for (var pi = 0; pi < ports.length; pi++) for (var pj = pi + 1; pj < ports.length; pj++) {
+    var A = ports[pi], B = ports[pj];
+    if (A.module && B.module && A.module === B.module) continue;          // same module: not an interface
+    var d = V.dist(A.pos, B.pos);
+    if (d < 1 || d > KNEX.U * 6.5) continue;
+    var joined = s.rods.some(function (R) {
+      return R.joints.some(function (j) { return j.conn === A.conn; }) && R.joints.some(function (j) { return j.conn === B.conn; });
+    });
+    if (joined) continue;
+    var u = V.unit(V.sub(B.pos, A.pos));
+    function faces(P, dir) { return P.dirs.some(function (x) { return V.angleDeg(x, dir) < 25; }); }
+    if (!faces(A, u) || !faces(B, V.mul(u, -1))) continue;                // not pointing at each other: not meant to join
+    var fit = KNEX.LADDER.filter(function (l) { return Math.abs(l.c2c - d) < D.tolLen; })[0];
+    var aim = A.dirs.some(function (x) { return V.angleDeg(x, u) < 8; }) && B.dirs.some(function (x) { return V.angleDeg(x, V.mul(u, -1)) < 8; });
+    if (fit && aim) { s.portFits.push({ a: A.label, b: B.label, rod: fit.color, d: d }); continue; }
+    var split = [];
+    KNEX.LADDER.forEach(function (x) { KNEX.LADDER.forEach(function (y) {
+      if (x.c2c <= y.c2c && Math.abs(x.c2c + y.c2c - d) < D.tolLen) split.push(x.color + " + " + y.color); }); });
+    var msg = "ports " + A.label + " and " + B.label + " face each other " + (d / KNEX.U).toFixed(3) + " U apart (" + d.toFixed(1) + " mm) but nothing joins them: ";
+    msg += fit ? "a " + fit.color + " rod is the right length, but neither socket points straight at the other."
+         : split.length ? "that is not a rod length. Bridge it with " + split.join(" or ") + " and a connector between."
+         : "that is not a rod length, and no pair of rods adds up to it. Move one module onto the lattice.";
+    s.portGaps.push({ a: A.label, b: B.label, d: d, msg: msg });
+    issue("warn", A.line, msg);
+  }
   // parts list + inventory
   var parts = {};
   s.conns.forEach(function (K) { parts[K.kind] = (parts[K.kind] || 0) + 1; });
@@ -534,7 +665,10 @@ KNEX.check = function (m, s) {
 };
 /* Entry point: text -> { model, solved, issues, parts }. Steps carry the build order for the viewer. */
 KNEX.build = function (text) {
-  var m = KNEX.parse(text), s = KNEX.solve(m);
+  var ex = KNEX.expand(text);
+  var m = KNEX.parse(ex.text), s = KNEX.solve(m);
+  ex.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
+  s.modules = ex.modules;
   m.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
   KNEX.check(m, s);
   s.issues.sort(function (a, b) { return (a.level === "error" ? 0 : 1) - (b.level === "error" ? 0 : 1) || (a.line || 0) - (b.line || 0); });

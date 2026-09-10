@@ -9,6 +9,21 @@ if (file === "sim") {
   if (!target) { console.error("usage: node cli.js sim build.knx [--surface s] [--press \"name\"=gain] [--seconds n] [--trace]"); process.exit(2); }
   process.exit(require(path.join(__dirname, "scripts", "sim_cli.js"))(KNEX, fs, target, args));
 }
+if (file === "ports") {                                  // what a build offers other modules, and whether they fit
+  var pos = args.filter(function (a) { return !isOpt(a); });
+  if (!pos[1]) { console.error("usage: node cli.js ports build.knx"); process.exit(2); }
+  var b = KNEX.build(fs.readFileSync(pos[1], "utf8"));
+  if (!b.ports.length) { console.log("no ports. Mark a connector with `Z name label` to say another module attaches there."); process.exit(0); }
+  console.log(b.title + ": " + b.ports.length + " port(s)" + (b.modules.length ? ", modules: " + b.modules.join(", ") : ""));
+  b.ports.forEach(function (p) {
+    console.log("  " + p.label.padEnd(22) + p.kind + "  at " + p.pos.map(function (v) { return (v / b.U).toFixed(2); }).join(",") +
+                " U  free sockets " + (p.free.length ? p.free.join(",") : "none"));
+  });
+  if (b.portFits.length) { console.log("\nthese fit:"); b.portFits.forEach(function (f) { console.log("  " + f.a + " to " + f.b + ": one " + f.rod + " rod (" + f.d.toFixed(1) + " mm)"); }); }
+  if (b.portGaps.length) { console.log("\nthese do not:"); b.portGaps.forEach(function (g) { console.log("  " + g.msg.replace(/^ports /, "")); }); }
+  if (!b.portFits.length && !b.portGaps.length) console.log("\nno two ports are facing each other; nothing to join yet.");
+  process.exit(0);
+}
 if (file === "shot") {                                   // a 3D render of a model, headless, straight to PNG
   var pos = args.filter(function (a) { return !isOpt(a); });
   if (pos.length < 3) { console.error("usage: node cli.js shot build.knx out.png [view=iso] [step=N] [stress=1] [run=2] [caption=...] [w=] [h=]"); process.exit(2); }
@@ -73,7 +88,7 @@ if (file === "span") {                                   // node cli.js span 0,0
   process.exit(0);
 }
 if (file === "parts") { console.log(require(path.join(__dirname, "scripts", "parts_ref.js"))(KNEX, args.indexOf("--json") >= 0)); process.exit(0); }
-if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png"); process.exit(2); }
+if (!file) { console.error("usage: node cli.js build.knx [--json f] [--push f] [--quiet]  |  node cli.js parts [--json]  |  node cli.js sim build.knx  |  node cli.js span a b  |  node cli.js spring  |  node cli.js arc  |  node cli.js render b.knx out.svg  |  node cli.js instructions b.knx  |  node cli.js view [b.knx]  |  node cli.js shot b.knx out.png  |  node cli.js ports b.knx"); process.exit(2); }
 var text = fs.readFileSync(file, "utf8"), s = KNEX.build(text), quiet = args.indexOf("--quiet") >= 0;
 function opt(flag) { var i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }
 console.log((s.title || file) + ": " + s.conns.length + " connectors, " + s.rods.length + " rods, " + s.spacers.length + " spacers | joints end " + s.jointCounts.end + " side " + s.jointCounts.side + " hole " + s.jointCounts.hole + " | ~" + s.mass_g + " g");

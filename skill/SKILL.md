@@ -111,6 +111,33 @@ apart. Gravity and counterweights are often the cheaper answer: put the payload'
 
 ## Working style
 
-Build in small steps: add a `!` step, append ten or twenty lines, run the CLI, fix what it says, continue.
+**Design by module, not in build order.** A base, a shoulder, an arm, a gripper: each is a `MOD` you get
+standing on its own in a scratch file, check, and only then place with `USE`. That is how the thing gets
+designed; the `!` steps are how it gets assembled, and the two orders are rarely the same.
+
+```
+MOD leg
+  C foot W8 0,0,0.5 x y
+  C top  W8 0,0,2.5 x y
+  R foot top
+  R ^FRAME top          # ^name reaches out of the module
+END
+USE leg L1 at=-2,-2,0
+USE leg L2 at=2,-2,0 rot=z90
+```
+
+Mark the places modules join with `Z conn label`. Once they are placed, `knex-cad ports <build>` tells you
+which facing ports a single rod already spans, and for the ones that do not fit, what to bridge the gap
+with. That is the fastest way to assemble sub-assemblies without discovering at the end that the distance
+between them is 3 U and does not exist.
+
+Within a module, build in small steps: append ten or twenty lines, run the CLI, fix what it says, continue.
 A build written all at once usually has a dozen impossible spans in it. Finish with `sim`, and look at a
-`render` before showing anyone anything.
+`shot` before showing anyone anything.
+
+**When the shape is not a lattice.** A cat, a tree, a curve: source reference images first and pin the real
+dimensions, then approximate. Curvature comes from a chain of bending rods (`beam`) through straight
+connectors — `knex-cad arc` gives the turn per joint and the radius the sockets will hold. A surface comes
+from a triangulated grid, not from a solid: pick the plane, lay a square lattice, brace every square, and
+let the diagonals do the work. Soft or compliant shapes come from `beam` rods and flexi rods, whose
+stiffness `knex-cad spring` will tell you.

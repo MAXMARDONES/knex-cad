@@ -23,6 +23,16 @@ file. Copy a block into your own build and change the coordinates.
 | ![](patterns/11-tan-clip-lever.png) | **Tan clip lever.** A connector on an axle spins freely; the clip locks it so the two turn together. | [11](../patterns/11-tan-clip-lever.knx) |
 | ![](patterns/12-pendulum.png) | **Ball on a string.** Strings are inextensible in tension and limp otherwise; balls are spheres with mass. | [12](../patterns/12-pendulum.knx) |
 
+## Demos
+
+Bigger builds you can open in the bench and take apart.
+
+| demo | what it shows |
+|---|---|
+| ![](patterns/demo-mech.png) | **`builds/demo_mech.knx`** — a motor turning a gear pair, a lever locked to an axle by a tan clip, a rubber band pulling it back, and a ball on a string. Every mechanism the engine knows, in one rig. |
+| ![](patterns/demo-modules.png) | **`builds/demo_modules.knx`** — one tower module placed four times with `USE`, with `Z` ports saying where the deck attaches. `node cli.js ports` reports which gaps a rod already spans and what to bridge the rest with. |
+| ![](../docs/hero.png) | **`builds/rig.knx`** — the worked example: a two-axis tilt platform that stands over a mouse and pushes it. Sixteen build steps, a compliant fork, four zigzag centring springs. |
+
 ## Part catalogue
 
 These stay as drawings rather than renders, because the socket numbering is the point: a photograph of a

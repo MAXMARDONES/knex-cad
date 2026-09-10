@@ -121,7 +121,7 @@ KNEX.solve = function (m) {
         else if (K.pair && Math.abs(V.dot(away, out.byName[K.pair].n)) < 0.08) { /* the other half of the pair holds it */ }
         else issue("error", K, K.name + ": the " + rod.color + " rod (line " + rod.line + ") ends at its centre but " + bestA.toFixed(0) + " deg off every slot" + (K.pair ? ", and its 3D partner " + K.pair + " cannot hold it either" : ""));
         }
-      } else if (q.t > 0.01 && q.t < 0.99 && !rod.beam) {
+      } else if (q.t > 0.01 && q.t < 0.99) {
         if (q.d < D.tolPos && along) { j = { type: "hole", t: q.t }; if (K.used.hole) issue("error", K, K.name + ": two rods through the hub"); K.used.hole = rod.line; }
         else if (along && Math.abs(q.d - D.sideR) < D.tolLen) {
           var toRod = V.unit(V.sub(q.q, K.pos)), sk = -1, sa = 1e9;
@@ -133,7 +133,7 @@ KNEX.solve = function (m) {
           if (!rod.ridges) issue("error", K, K.name + ": side-on onto a green rod is impossible (no ridges)");
           if (K.used["s" + sk]) issue("error", K, K.name + ": slot " + sk + " already used");
           K.used["s" + sk] = rod.line;
-        } else if (q.d < D.connR && Math.abs(V.dot(V.sub(q.q, K.pos), K.n)) < D.connT) {
+        } else if (!rod.beam && q.d < D.connR && Math.abs(V.dot(V.sub(q.q, K.pos), K.n)) < D.connT) {
           issue("error", K, K.name + " collides with the " + rod.color + " rod (line " + rod.line + "): " + q.d.toFixed(1) + " mm from the hub, not a joint");
         }
       }
@@ -203,6 +203,15 @@ KNEX.solve = function (m) {
   out.weights = (m.weights || []).map(function (Wt) {
     if (!byName[Wt.conn]) { issue("error", Wt, "W " + Wt.name + ": connector " + Wt.conn + " was not placed"); return null; }
     return { name: Wt.name, conn: Wt.conn, mass: Wt.mass, pos: byName[Wt.conn].pos, line: Wt.line, step: Wt.step };
+  }).filter(Boolean);
+  out.ports = (m.ports || []).map(function (Z) {
+    var K = byName[Z.conn];
+    if (!K) { issue("error", Z, "Z: connector " + Z.conn + " was not placed"); return null; }
+    var used = {}; K.joints.forEach(function (j) { if (j.slot != null) used[j.slot] = 1; });
+    var free = KNEX.KINDS[K.kind].slots.filter(function (k) { return !used[k]; });
+    var mod = Z.conn.indexOf(".") > 0 ? Z.conn.split(".")[0] : null;
+    return { conn: Z.conn, label: (mod ? mod + "." : "") + Z.label, pos: K.pos, n: K.n, kind: K.kind, free: free,
+             dirs: free.map(function (k) { return K.slotDir(k); }), module: mod, line: Z.line };
   }).filter(Boolean);
   out.balls = (m.balls || []).map(function (O) {
     var p = point(O.at); if (!p) { issue("error", O, "O " + O.label + ": bad position"); return null; }

@@ -1,0 +1,29 @@
+T Modular gantry
+# Designed as one module placed four times, not as one long list of parts.
+# Every tower is identical; only where it sits changes. The ports say where the deck attaches,
+# and the checker tells you whether a rod actually spans the gap between two of them.
+X payload 0,0,0.6 90,90,45 #3B4252 mass=120
+MOD tower
+  C foot W8 0,0,0.5 x y
+  C mid  W8 0,0,1.5 x y
+  C top  B7 0,0,2.5 x y
+  C top2 B7 0,0,2.5 z x
+  R foot mid
+  R mid top
+  Z top2 deck
+  Z mid brace
+END
+! four towers, one module placed four times
+USE tower SW at=-2,-2,0
+USE tower SE at=2,-2,0
+USE tower NE at=2,2,0
+USE tower NW at=-2,2,0
+! the deck the ports were waiting for: 4 U between towers, so red rods
+R SW.top2 SE.top2
+R SE.top2 NE.top2
+R NE.top2 NW.top2
+R NW.top2 SW.top2
+R SW.top2 NE.top2
+! braces down the sides, in the vertical planes the towers already live in
+R SW.mid SE.mid
+R NW.mid NE.mid

@@ -1,6 +1,9 @@
 /* Entry point: text -> { model, solved, issues, parts }. Steps carry the build order for the viewer. */
 KNEX.build = function (text) {
-  var m = KNEX.parse(text), s = KNEX.solve(m);
+  var ex = KNEX.expand(text);
+  var m = KNEX.parse(ex.text), s = KNEX.solve(m);
+  ex.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
+  s.modules = ex.modules;
   m.errors.forEach(function (e) { s.issues.push({ level: "error", line: e.line, msg: e.msg }); });
   KNEX.check(m, s);
   s.issues.sort(function (a, b) { return (a.level === "error" ? 0 : 1) - (b.level === "error" ? 0 : 1) || (a.line || 0) - (b.line || 0); });

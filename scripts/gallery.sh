@@ -11,6 +11,8 @@ echo "hero and the worked example"
 ./scripts/shot.sh builds/rig.knx docs/hero.png view=iso w=1600 h=900 caption=0 >/dev/null && echo "  docs/hero.png"
 ./scripts/shot.sh builds/demo_mech.knx docs/patterns/demo-mech.png view=iso w=1300 h=800 \
   caption="motor, gears, string, band and ball" >/dev/null && echo "  docs/patterns/demo-mech.png"
+./scripts/shot.sh builds/demo_modules.knx docs/patterns/demo-modules.png view=iso w=1100 h=750 \
+  caption="one tower module placed four times" >/dev/null && echo "  docs/patterns/demo-modules.png"
 ./scripts/shot.sh builds/rig.knx docs/stress.png view=iso stress=1 run=1.2 w=1300 h=800 \
   caption="stress view: bearings and bending rods, coloured by how close they are to letting go" >/dev/null && echo "  docs/stress.png"
 

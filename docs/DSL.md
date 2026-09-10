@@ -20,6 +20,46 @@ F  NODE fx,fy,fz [name]       # external force in newtons at that connector: a f
 I  W8=32 blue=18 ...          # inventory (parts list is checked against it)
 #  comment
 ```
+
+## Modules
+
+Design a sub-assembly once, place it as often as you like. This is how you work on a big model: get one
+module standing on its own, check it, then place it where it belongs.
+
+```
+MOD leg                       # everything until END is the module
+  C foot W8 0,0,0.5 x y
+  C top  W8 0,0,2.5 x y
+  R foot top
+  R ^FRAME top                # ^name reaches OUT of the module, to something already placed
+END
+
+USE leg L1 at=-2,-2,0
+USE leg L2 at=2,-2,0 rot=z90
+USE leg L3 at=2,2,0 mirror=x
+```
+
+### Ports: where modules meet
+
+`Z conn label` marks a connector as an interface. Once two modules are placed, the checker looks at every
+pair of ports that **face each other** and says whether a rod actually spans the gap:
+
+```
+these fit:
+  SW.brace to NW.brace: one red rod (150.0 mm)
+
+these do not:
+  A.deck and B.deck face each other 3.000 U apart (112.5 mm) but nothing joins them:
+  that is not a rod length. Bridge it with green + blue and a connector between.
+```
+
+`node cli.js ports <build>` lists every port with its free sockets and both of those lists. Ports that are
+not pointing at each other are ignored, so you only hear about joins you meant to make.
+
+Names inside become `prefix.name`, so `L1.top` and `L2.top` are different connectors. `at=` translates in
+lattice units, `rot=` is a quarter turn about an axis (`x90 y180 z270` — anything else leaves the lattice),
+and `mirror=` flips one axis. Directions inside the module are rotated with it; positions are rotated and
+then translated.
 Any point may be relative: `NAME@dx,dy,dz` (offset in units from that connector's hub) — needed for parts
 hanging off a side-clip, whose hub is 13.75 mm off the lattice.
 
