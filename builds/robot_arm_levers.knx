@@ -1,0 +1,540 @@
+T Six-axis K'NEX robot arm, cable-driven from an operator lever stand
+# U = 37.5 mm, z up, desk at z = 0. The arm itself is builds/robot_arm.knx unchanged: six slider-crank
+# axes, each a rod sliding through guide hubs, a yoke, a coupler link and a crank pin.
+#
+# What is different here is the DRIVE. Nothing pushes on a slider any more. Every axis is pulled by a
+# string (Y) that runs from a lever on an anchored operator stand, over guide hubs, to the far cap of
+# that axis's slider rod. A string can only pull, so each axis has an antagonist: gravity for the
+# elbow, wrist and gripper, rubber bands for yaw, roll and the boom. The operator's hands (F lines)
+# touch nothing but the six lever handles.
+#
+# The routing rule that makes it work: EVERY guide sits ON the axis of the joint it crosses, so the
+# routed length of a cable does not change when an upstream joint moves. YCAP is on the yaw axis,
+# SGY on the shoulder axis, EL on the elbow axis, FK on the wrist-pitch axis, WA on the roll axis.
+! base deck: a 4U square with a rear extension for ballast. The outer nodes are 3D pairs, because a
+! horizontal deck rod and a vertical leg are never coplanar.
+C P1 B7 2,2,1.5 z -x
+C P1v B7 2,2,1.5 x -z
+C P2 B7 2,-2,1.5 z y
+C P2v B7 2,-2,1.5 x -z
+C P3 W8 -2,-2,1.5
+C P4 W8 -2,2,1.5
+C P5 W8 -2,0,1.5
+C GB3 W8 -3,-2,1.5
+C R1 B7 -4,-2,1.5 z x
+C R1v B7 -4,-2,1.5 x -z
+C R2 B7 -4,2,1.5 z -y
+C R2v B7 -4,2,1.5 x -z
+C R3 W8 -4,0,1.5
+R P1 P2
+R P2 P3
+R P4 P1
+R P3 P5
+R P5 P4
+R P3 GB3
+R GB3 R1
+R P5 R3
+R P4 R2
+R R1 R3
+R R3 R2
+R R1 P5
+R P5 R2
+! the centre node is a 3D pair too: the deck rods lie in its plane, the yaw axle stands on its partner
+C BC B7 0,0,1.5 z x+y
+C BCV B7 0,0,1.5 y z
+R BC P1
+R BC P2
+R BC P3
+R BC P4
+R BC P5
+! feet: the only parts that touch the desk
+C FT1 W8 2,2,0.5 x y
+C FT2 W8 2,-2,0.5 x y
+C FT5 W8 -4,-2,0.5 x y
+C FT6 W8 -4,2,0.5 x y
+R FT1 P1v
+R FT2 P2v
+R FT5 R1v
+R FT6 R2v
+! ballast at the back, so the reach of the arm does not tip it
+W ballastL R1 mass=400
+W ballastR R2 mass=400
+! AXIS 1 bearing: a red rod standing on the centre pair, capped at the top
+R BCV 0,0,5.5 red
+C YCAP D1 0,0,5.5 y -z
+! the column: a braced box riding two hubs on that axle. The spacers under the lower hub turn the
+! bearing into a thrust bearing so the column cannot slide down the axle.
+H Y1 W8 0,0,2.5
+H Y2 W8 0,0,4.5
+P 0,0,2.3 silver
+P 0,0,2.7 silver
+C CA B7 1,1,2.5 z -x
+C CAv B7 1,1,2.5 x z
+C CB B7 1,-1,2.5 z y
+C CBv B7 1,-1,2.5 -y z
+C CC B7 -1,-1,2.5 z x
+C CCv B7 -1,-1,2.5 -x z
+C CD B7 -1,1,2.5 z -y
+C CDv B7 -1,1,2.5 y z
+R Y1 CA
+R Y1 CB
+R Y1 CC
+R Y1 CD
+R CA CB
+R CB CC
+R CC CD
+R CD CA
+C CA2 B7 1,1,4.5 z -x
+C CA2v B7 1,1,4.5 y -z
+C CB2 B7 1,-1,4.5 z y
+C CB2v B7 1,-1,4.5 x -z
+C CC2 B7 -1,-1,4.5 z x-y
+C CC2v B7 -1,-1,4.5 -y -z
+C CD2 B7 -1,1,4.5 z -y
+C CD2v B7 -1,1,4.5 -x -z
+R Y2 CA2
+R Y2 CB2
+R Y2 CC2
+R Y2 CD2
+R CA2 CB2
+R CB2 CC2
+R CC2 CD2
+R CD2 CA2
+! four uprights and four face diagonals, one starting and one landing at every corner
+R CAv CA2v
+R CBv CB2v
+R CCv CC2v
+R CDv CD2v
+R CAv CB2v
+R CBv CC2v
+R CCv CD2v
+R CDv CA2v
+! AXIS 1 crank: a triangulated arm off the column top reaching 2U behind the axle, with a pin
+! hanging from its tip. The coupler runs parallel to the slide, which is where the torque comes from.
+C CK2 B7 0,-2,4.5 z x
+C CK2v B7 0,-2,4.5 x -z
+R CB2 CK2
+R CC2 CK2
+C CKC D1 0,-2,3.5 x z
+R CK2v CKC
+H CY2 W8 0,-2,4
+P 0,-2,3.8 silver
+P 0,-2,4.2 silver
+! AXIS 1 actuator: a red rod sliding along x at y=-2, z=2.5, with its yoke pin standing up to z=4.5
+H CY1 W8 -2,-2,4
+P -2,-2,3.8 silver
+P -2,-2,4.2 silver
+R CY1 CY2
+C YK1 R3 -2,-2,2.5 y -x
+C PC1 D1 -2,-2,4.5 x -z
+R YK1 PC1
+C AC1 D1 -6,-2,2.5 y x
+R YK1 AC1
+H GH1 W8 -3,-2,2.5
+H GH2 W8 -4,-2,2.5
+R GH1 GB3
+R GH2 R1v
+! opposed centring bands
+E yawA1 AC1 R1 rest=68 k=0.148
+E yawA2 AC1 R1 rest=68 k=0.148
+E yawB1 YK1 GB3 rest=30 k=0.08
+E yawB2 YK1 GB3 rest=30 k=0.08
+! AXIS 2 shoulder: a hub on the front rail of the column top. The upper arm is a flat triangle in the
+! plane y=0; the crank is the arm itself, with the pin 2U out from the bearing.
+H SH W8 1,0,4.5
+P 1,-0.2,4.5 silver
+P 1,0.2,4.5 silver
+C MIDU W8 2,0,4.5
+C UA B7 3,0,4.5 y -x
+C UAv B7 3,0,4.5 z -y
+C EL B7 3,0,6.5 y -z
+C ELv B7 3,0,6.5 z y
+R SH MIDU
+R MIDU UA
+R UA EL
+R SH EL
+! crank pin on the upper arm, coupler down and back to the slider
+C SCC D1 3,-2,4.5 x y
+R UAv SCC
+H SCP W8 3,-1,4.5
+P 3,-0.8,4.5 silver
+P 3,-1.2,4.5 silver
+H SAP W8 1,-1,6.5
+P 1,-0.8,6.5 silver
+P 1,-1.2,6.5 silver
+R SCP SAP
+! AXIS 2 actuator: a red rod sliding vertically at x=1, y=-2, guided by a hub braced into the
+! horizontal triangle of the column top
+C YK2 R3 1,-2,6.5 x -z
+C PC2 D1 1,0,6.5 x -y
+R YK2 PC2
+C AS1 D1 1,-2,2.5 x z
+R YK2 AS1
+H GS1 W8 1,-2,4.5
+R GS1 CB2
+R GS1 CK2
+E shoA YK2 CB2 rest=70 k=0.02
+E shoB1 AS1 CB2 rest=50 k=0.04
+! AXIS 3 elbow: axle cantilevered off the elbow node, forearm as an A-frame in the plane y=1
+C ECAP D1 3,2,6.5 x -y
+R ELv ECAP
+H FH W8 3,1,6.5
+P 3,0.8,6.5 silver
+P 3,1.2,6.5 silver
+C FK B7 5,1,6.5 y -x-z
+C FKv B7 5,1,6.5 z y
+C FB W8 4,1,5.5
+R FH FK
+R FH FB
+R FB FK
+! crank pin at the far end of the forearm, coupler back and down to the slider
+C ECC D1 5,3,6.5 x -y
+R FKv ECC
+H ECP W8 5,2,6.5
+P 5,1.8,6.5 silver
+P 5,2.2,6.5 silver
+H EAP W8 3,2,4.5
+P 3,1.8,4.5 silver
+P 3,2.2,4.5 silver
+R ECP EAP
+! AXIS 3 actuator: a red rod sliding along x at y=3, z=4.5, guided off a bracket on the upper arm
+C YK3 R3 3,3,4.5 z -x
+C PC3 D1 3,1,4.5 x y
+R YK3 PC3
+C AE1 D1 -1,3,4.5 y x
+R YK3 AE1
+H GE1 W8 2,3,4.5
+C BRB W8 2,1,4.5
+R GE1 BRB
+R BRB MIDU
+R BRB UAv
+E elbA YK3 GE1 rest=10 k=0.063
+E elbB AE1 GE1 rest=90 k=0.02
+! mast on the forearm, carrying the two guides of the wrist-pitch actuator
+C MB W8 1,1,6.5
+C MA B7 2,1,7.5 y x-z
+C MAv B7 2,1,7.5 z y
+C MD B7 1,1,7.5 y -z
+C MDv B7 1,1,7.5 z y
+R FH MB
+R FH MA
+R MB MA
+R MB MD
+R MA MD
+! AXIS 4 wrist pitch: axle cantilevered off the forearm elbow node, wrist link is a triangle at y=0
+C WCAP R3 5,-1,6.5 x y
+R FKv WCAP
+H WH W8 5,0,6.5
+P 5,-0.2,6.5 silver
+P 5,0.2,6.5 silver
+C WT B7 6,0,7.5 y -x-z
+C WTv B7 6,0,7.5 z y
+C WA W8 7,0,6.5
+R WH WT
+R WT WA
+R WH WA
+C W4CC D1 6,2,7.5 x -y
+R WTv W4CC
+H W4C W8 6,1,7.5
+P 6,0.8,7.5 silver
+P 6,1.2,7.5 silver
+H W4A W8 4,1,7.5
+P 4,0.8,7.5 silver
+P 4,1.2,7.5 silver
+R W4A W4C
+C YK4 R3 4,2,7.5 z -x
+C PC4 D1 4,0,7.5 x y
+R YK4 PC4
+C AE4 D1 0,2,7.5 y x
+R YK4 AE4
+H GW1 W8 2,2,7.5
+H GW2 W8 1,2,7.5
+R GW1 MAv
+R GW2 MDv
+E wriA1 YK4 GW1 rest=26 k=0.04
+E wriB AE4 GW1 rest=45 k=0.02
+! AXIS 5 wrist roll: the hand rides a hub on a shaft along the arm's own axis
+C RCAP R3 9,0,6.5 y -z
+R WA RCAP
+H RH W8 8,0,6.5
+P 7.8,0,6.5 silver
+P 8.2,0,6.5 silver
+C HU W8 8,0,7.5 x -z
+C HL B7 8,0,5.5 x y+z
+C HLv B7 8,0,5.5 z -x
+C HR W8 8,1,6.5
+C HB B7 8,-1,6.5 x y-z
+C HBv B7 8,-1,6.5 z x
+R RH HU
+R RH HL
+R RH HR
+R RH HB
+R HU HR
+R HR HL
+R HL HB
+R HB HU
+! roll crank: a pin along the arm axis, 1U below it, and a coupler across in y
+C R5CC D1 6,0,5.5 y x
+R HLv R5CC
+H R5C W8 7,0,5.5
+P 6.8,0,5.5 silver
+P 7.2,0,5.5 silver
+H R5A W8 7,2,5.5
+P 6.8,2,5.5 silver
+P 7.2,2,5.5 silver
+R R5C R5A
+C YK5 R3 5,2,5.5 z -y
+C PC5 D1 9,2,5.5 y -x
+R YK5 PC5
+C AE5 D1 5,-2,5.5 x y
+R YK5 AE5
+H GR1 W8 5,0,5.5
+R GR1 WH
+E rolA YK5 GR1 rest=55
+E rolB AE5 GR1 rest=69 k=0.1
+! AXIS 6 gripper: one jaw pivoting on an axle through the top of the hand, closing past a fixed anvil
+C JAC D1 8,2,7.5 x -y
+R HU JAC
+H JH W8 8,1,7.5
+P 8,0.8,7.5 silver
+P 8,1.2,7.5 silver
+C JT B7 10,1,7.5 y -x
+C JTv B7 10,1,7.5 z -y
+C JD R3 10,1,5.5 y -x+z
+R JH JT
+R JT JD
+R JH JD
+C JF W8 10,0,5.5
+R HLv JF
+! gripper crank pin on the jaw, coupler up to the slider
+C G6CC D1 10,-1,7.5 x y
+R JTv G6CC
+H G6C W8 10,0,7.5
+P 10,-0.2,7.5 silver
+P 10,0.2,7.5 silver
+H G6A W8 11,0,8.5
+P 11,-0.2,8.5 silver
+P 11,0.2,8.5 silver
+R G6C G6A
+C YK6 R3 11,-1,8.5 x -z
+C PC6 D1 11,1,8.5 x -y
+R YK6 PC6
+C AE6 D1 11,-1,4.5 x z
+R YK6 AE6
+H GG1 W8 11,-1,6.5
+C GB0 W8 9,-1,6.5
+R GG1 GB0
+R GB0 HBv
+E griA YK6 GG1 rest=55
+E griB AE6 GG1 rest=55
+! OPERATOR STAND, deck: an 8U x 2U console on the desk behind the machine, four feet, the back rail
+! carrying the diagonals so every cell is a triangle. Anchored (A) because a lever is a hand pushing
+! on the world: without the anchor the console would ride away every time a lever is used.
+C KB4n  P4 -9,-4,1.5 z x
+C KB4nv B7 -9,-4,1.5 x -z
+C KB2n  W8 -9,-2,1.5 z x
+C KB0   W8 -9,0,1.5 z x
+C KB2p  W8 -9,2,1.5 z x
+C KB4p  P4 -9,4,1.5 z -y
+C KB4pv B7 -9,4,1.5 x -z
+C KF4n  P4 -7,-4,1.5 z y
+C KF4nv B7 -7,-4,1.5 x -z
+C KF2n  W8 -7,-2,1.5 z y
+C KF0   B7 -7,0,1.5 z y
+C KF0v  B7 -7,0,1.5 x -z
+C KF2p  W8 -7,2,1.5 z y
+C KF4p  P4 -7,4,1.5 z -x
+C KF4pv B7 -7,4,1.5 x -z
+R KB4n KB2n
+R KB2n KB0
+R KB0 KB2p
+R KB2p KB4p
+R KF4n KF2n
+R KF2n KF0
+R KF0 KF2p
+R KF2p KF4p
+R KB4n KF4n
+R KB2n KF2n
+R KB0 KF0
+R KB2p KF2p
+R KB4p KF4p
+R KB4n KF2n
+R KB2n KF0
+R KB0 KF2p
+R KB2p KF4p
+C KFTa W8 -9,-4,0.5 x y
+C KFTb W8 -9,4,0.5 x y
+C KFTc W8 -7,-4,0.5 x y
+C KFTd W8 -7,4,0.5 x y
+R KFTa KB4nv
+R KFTb KB4pv
+R KFTc KF4nv
+R KFTd KF4pv
+A KB0
+! OPERATOR STAND, front truss: three posts carry a fairlead rail at z=2.5 and the lever axle at 3.5.
+! The rail is a chain of green rods so every guide node is a rigid part of the console and cannot
+! slide or spin under cable load; only the six lever bearings on the axle above it are free.
+C KR4n W8 -7,-4,2.5 x z
+C KRn3 W8 -7,-3,2.5 x z
+C KRn2 W8 -7,-2,2.5 x z
+C KRn1 W8 -7,-1,2.5 x z
+C KR0  W8 -7,0,2.5 x z
+C KRp1 W8 -7,1,2.5 x z
+C KRp2 W8 -7,2,2.5 x z
+C KRp3 W8 -7,3,2.5 x z
+C KR4p W8 -7,4,2.5 x z
+R KF4nv KR4n
+R KF0v KR0
+R KF4pv KR4p
+R KR4n KRn3
+R KRn3 KRn2
+R KRn2 KRn1
+R KRn1 KR0
+R KR0 KRp1
+R KRp1 KRp2
+R KRp2 KRp3
+R KRp3 KR4p
+C KA4n W8 -7,-4,3.5 x z
+C KA0  W8 -7,0,3.5 x z
+C KA4p W8 -7,4,3.5 x z
+R KR4n KA4n
+R KR0 KA0
+R KR4p KA4p
+R KA4n KA0
+R KA0 KA4p
+R KRn3 KA4n
+R KRn1 KA0
+R KRp1 KA0
+R KRp3 KA4p
+R KRn3 KF4nv
+R KRn1 KF0v
+R KRp1 KF0v
+R KRp3 KF4pv
+! OPERATOR STAND, the lever bank: six hubs on the axle, each its own bearing, each with three arms.
+! Handle 4U up (the hand goes here and nowhere else), cable arm 1.4U back-and-down (the string), and
+! return arm 1U forward carrying a band down to the deck. The band holds the lever forward against
+! its cable, so at rest every cable is taut and the arm's pose is defined by the console, not by luck.
+! Push a handle forward and its cable arm swings away from the fairlead: the cable shortens on the
+! machine side and drives. Pull the handle back and the cable pays out and the axis's antagonist wins.
+H LBM W8 -7,-3,3.5 z
+P -7,-3.2,3.5 silver
+P -7,-2.8,3.5 silver
+C LBMh D1 -7,-3,7.5 y -z
+C LBMc D1 -8,-3,2.5 y x+z
+C LBMr D1 -6,-3,3.5 y -x
+R LBM LBMh
+R LBM LBMc
+R LBM LBMr
+H LSW W8 -7,-2,3.5 z
+P -7,-2.2,3.5 silver
+P -7,-1.8,3.5 silver
+C LSWh D1 -7,-2,7.5 y -z
+C LSWc D1 -8,-2,2.5 y x+z
+C LSWr D1 -6,-2,3.5 y -x
+R LSW LSWh
+R LSW LSWc
+R LSW LSWr
+H LST W8 -7,-1,3.5 z
+P -7,-1.2,3.5 silver
+P -7,-0.8,3.5 silver
+C LSTh D1 -7,-1,7.5 y -z
+C LSTc D1 -8,-1,2.5 y x+z
+C LSTr D1 -6,-1,3.5 y -x
+R LST LSTh
+R LST LSTc
+R LST LSTr
+H LWR W8 -7,1,3.5 z
+P -7,0.8,3.5 silver
+P -7,1.2,3.5 silver
+C LWRh D1 -7,1,7.5 y -z
+C LWRc D1 -8,1,2.5 y x+z
+C LWRr D1 -6,1,3.5 y -x
+R LWR LWRh
+R LWR LWRc
+R LWR LWRr
+H LGR W8 -7,2,3.5 z
+P -7,1.8,3.5 silver
+P -7,2.2,3.5 silver
+C LGRh D1 -7,2,7.5 y -z
+C LGRc D1 -8,2,2.5 y x+z
+C LGRr D1 -6,2,3.5 y -x
+R LGR LGRh
+R LGR LGRc
+R LGR LGRr
+! the roll control is not a lever but a crank: a 2U arm to a hub-height wheel node and a grip along
+! the axle, so the operator's hand turns it round instead of pushing it fore and aft.
+H LRL W8 -7,3,3.5 z
+P -7,2.8,3.5 silver
+P -7,3.2,3.5 silver
+C LRLw  B7 -7,3,5.5 y -z
+C LRLwv B7 -7,3,5.5 z y
+C LRLg  D1 -7,4,5.5 z -y
+C LRLc D1 -8,3,2.5 y x+z
+C LRLr D1 -6,3,3.5 y -x
+R LRL LRLw
+R LRLwv LRLg
+R LRL LRLc
+R LRL LRLr
+! lever return bands: each pulls the forward arm down onto the deck, which is +torque about the axle
+! and therefore holds the handle forward and the cable taut. This is the operator's "feel": the band
+! is what he pushes against, and what puts the lever back when he lets go.
+E rbBM LBMr KF4n rest=55 k=0.05
+E rbSW LSWr KF2n rest=50 k=0.05
+E rbST LSTr KF0  rest=55 k=0.05
+E rbWR LWRr KF0  rest=55 k=0.05
+E rbGR LGRr KF2p rest=50 k=0.05
+E rbRL LRLr KF4p rest=55 k=0.05
+! the operator's hands. Nothing else in this model has an F on it: no finger touches a slider, a
+! crank or a joint. 0.01 N declared, so --press "boom"=100 is a 1 N push on that handle.
+F LBMh 0.01,0,0 boom
+F LSWh 0.01,0,0 swing
+F LSTh 0.01,0,0 stick
+F LWRh 0.01,0,0 wrist
+F LGRh 0.01,0,0 grip
+F LRLg 0.01,0,0 roll
+! SGY: the only new guide the machine needs. It hangs 1U off the column top ring at (1,2,4.5), which
+! is a point ON the shoulder axis line (x=1, z=4.5, any y). Four cables turn here and none of them
+! changes length when the shoulder pitches. YCAP, the cap on top of the yaw axle at (0,0,5.5), does
+! the same job for the swing: it is on the yaw axis, so the whole cable loom passes through the slew
+! centre exactly as it does on a real machine.
+C SGY R3 1,2,4.5 x z
+R CA2 SGY
+! BG2: a spacer-parked hub riding the base's front rail directly under the boom slider's bottom cap.
+! It is a real pulley - it spins on the rod - and its only job is to turn the boom cable through 90
+! degrees so the pull on the slider is exactly vertical. Before it existed the cable left AS1 at 45
+! degrees to the nearest base node and the horizontal half of that pull yawed the whole column: the
+! boom lever swung the machine 1.7 degrees every time it was used.
+H BG2 W8 1,-2,1.5 z
+P 0.8,-2,1.5 silver
+P 1.2,-2,1.5 silver
+! THE CABLE LOOM. Each string runs lever arm -> fairlead on the console -> guides on the joint axes
+! -> the far cap of that axis's slider rod. rest = the drawn length, so at the drawn pose every cable
+! is exactly taut and the console is the position reference for the whole arm.
+Y cabSwing LSWc AC1 via=KRn2 slack=3
+Y cabBoom  LBMc AS1 via=KRn3,R1,BG2 slack=3
+Y cabStick LSTc AE1 via=KRn1,YCAP,SGY slack=3
+Y cabWrist LWRc AE4 via=KRp1,YCAP,SGY,EL slack=3
+Y cabRoll  LRLc AE5 via=KRp3,YCAP,SGY,EL,FK slack=3
+Y cabGrip  LGRc AE6 via=KRp2,YCAP,SGY,EL,FK,WA slack=3
+! GRAVITY BALANCE. Three masts, each standing 2U directly above a pitch axis on the link BELOW it,
+! and a bundle of near-zero-rest-length rubber bands from the mast top to a point 2U out along the
+! link ABOVE it. A band whose rest length is almost zero pulls with a force proportional to its own
+! length, and the torque it makes about the pivot is then k*h*r*cos(theta): the same cos(theta) that
+! gravity makes. That is why this holds the arm at EVERY angle instead of at one angle, and why the
+! shoulder is no longer bistable. The attach point is level with the pivot, one notch BELOW the
+! link's centre of mass direction, which is what makes the residual stiffness restoring, not runaway.
+C SBM D1 1,2,6.5 x -z
+R SGY SBM
+C EBM R3 3,0,8.5 y -z
+R EL EBM
+C WBM D1 5,-1,8.5 x -z
+R WCAP WBM
+E balSh1 SBM ECAP rest=5 k=0.0262
+E balSh2 SBM ECAP rest=5 k=0.0262
+E balSh3 SBM ECAP rest=5 k=0.0262
+E balSh4 SBM ECAP rest=5 k=0.0262
+E balEl1 EBM WBM rest=5 k=0.0179
+E balEl2 EBM WBM rest=5 k=0.0179
+E balEl3 EBM WBM rest=5 k=0.0179
+E balWr1 WBM WT rest=5 k=0.0336
+E balWr2 WBM WT rest=5 k=0.0336

@@ -1131,6 +1131,11 @@ KNEX.phys.world = function (s, opts) {
       var pts = T.nodes.map(function (n) { return n.body.toWorld(n.p); }), L = 0, segs = [];
       for (var i = 1; i < pts.length; i++) { var d = V.sub(pts[i], pts[i - 1]), l = V.norm(d); L += l; segs.push(l > 1e-9 ? V.mul(d, 1 / l) : [0, 0, 1]); }
       T.len = L; T.pts = pts; T.segs = segs;
+      /* A taut string keeps its multiplier from one step to the next as a warm start, and the solver
+         applies only the change, so the motion is right. The running total is NOT a force, though:
+         reporting it divided by one timestep read a 100 g ball hanging on a cord as 491 kN, growing
+         by its own weight every second. Remember where the step started and report the difference. */
+      T.lam0 = T.lam || 0;
       if (T.kind !== "band") { T.F = 0; return; }
       T.F = L > T.rest ? T.k * (L - T.rest) : 0;
       if (!T.F) return;
@@ -1272,6 +1277,12 @@ KNEX.phys.world = function (s, opts) {
       b.q = P.qnorm([b.q[0]+dq[0], b.q[1]+dq[1], b.q[2]+dq[2], b.q[3]+dq[3]]);
     });
     W.joints.forEach(function (j) { j.load = Math.hypot(j.acc[0], j.acc[1], j.acc[2]) / dt; j.spinTorque = j.accSpin / dt; });
+    // a string's tension is the impulse it added THIS step, not the total it is carrying forward
+    (W.tendons || []).forEach(function (T) {
+      if (T.kind !== "string") return;
+      // Slack this step: the multiplier was reset, so the difference is the release, not a push.
+      T.F = T.len <= T.rest ? 0 : Math.max(0, -(T.lam - (T.lam0 || 0)) / dt);
+    });
     // ---- what fails: a socket lets go when the load past it is more than the plastic holds
     W.beams.forEach(function (bm) {
       if (!bm.flexi) bm.F = bm.sAx.lam / dt;
@@ -1310,7 +1321,7 @@ KNEX.phys.world = function (s, opts) {
       joints: W.joints.map(function (j) { return { name: j.name, kind: j.kind, load: j.load, broken: !!j.broken, friction: Math.abs(j.spinTorque) }; }),
       events: W.events.slice(),
       beams: W.beams.map(function (b) { return { name: b.name, color: b.color, broken: !!b.broken, util: b.util || 0, axial: b.F, lateral: b.Flat, bend: (b.Mbend || 0) * 1000, deflect: (b.deflect || 0) * 1000, len: b.len * 1000 }; }),
-      tendons: (W.tendons || []).map(function (t) { return { name: t.name, kind: t.kind, F: t.kind === "band" ? t.F : -t.lam / dt, len: t.len * 1000, rest: t.rest * 1000 }; }),
+      tendons: (W.tendons || []).map(function (t) { return { name: t.name, kind: t.kind, F: t.F, len: t.len * 1000, rest: t.rest * 1000 }; }),
       motors: (W.motors || []).map(function (m) { return { name: m.name, torque: m.lam / dt * 1000, rpm: V.dot(m.joint.ax, V.sub(m.joint.B.w, m.joint.A.w)) * 60 / (2 * Math.PI) }; }),
       gears: (W.gearPairs || []).map(function (g) { return { a: g.a.name, b: g.b.name, ratio: (g.b.teeth / g.a.teeth).toFixed(2) }; }),
       contacts: W.contacts.filter(function (c) { return c.lam > 1e-9; }).map(function (c) { return { on: c.B ? (c.B.prop ? c.B.prop.label : c.B.ball ? c.B.ball.label : "part") : "desk", body: c.A.id, N: c.lam / dt, at: V.mul(c.p, 1000) }; }),
